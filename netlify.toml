@@ -1,0 +1,27 @@
+[build]
+  command = "npm run build"
+  publish = "out"
+  functions = "netlify/functions"
+
+[build.environment]
+  NEXT_TELEMETRY_DISABLED = "1"
+  NODE_VERSION = "18"
+
+[dev]
+  command = "npm run dev"
+  port = 3003
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Handle API routes with Netlify Functions
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# Handle all other routes with the SPA
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200 

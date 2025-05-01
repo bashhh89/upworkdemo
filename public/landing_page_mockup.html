@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Implementation Tool Mockup</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                'light-gray': '#333333',
+                'muted-gray': '#a0a0a0',
+                'near-black': '#0a0a0a', // Using a slightly lighter black for differentiation if needed
+              }
+            }
+          }
+        }
+    </script>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Body Font Style -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .rotate-180 {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body class="bg-black text-white antialiased">
+
+    <!-- Hero Section -->
+    <section class="py-20 md:py-32 px-4">
+        <div class="container mx-auto max-w-4xl text-center">
+            <h1 class="text-4xl md:text-5xl font-bold tracking-tight mb-6">
+                Stop Downloading AI Plans. Start Deploying AI Advantage.
+            </h1>
+            <p class="text-lg text-muted-gray mb-10 max-w-2xl mx-auto">
+                Ditch the static PDFs and endless theory. Access a dynamic, personalized platform built for marketing leaders ready to implement AI *now*. Get your interactive 90-Day Roadmap, benchmark your AI efficiency instantly, and leverage integrated AI tools to accelerate real results.
+            </p>
+
+            <!-- Visual Placeholder -->
+            <div class="mt-12 md:mt-16 w-full max-w-3xl mx-auto rounded-lg overflow-hidden border border-light-gray shadow-lg">
+                <img src="images/bw.jpg" alt="AI Strategy Platform Visualization" class="w-full h-auto object-cover">
+                <!-- IMPORTANT: User needs to replace 'image_0a918c.jpg' with the actual image file path/name -->
+            </div>
+
+            <!-- CTA Button -->
+            <a href="#form-placeholder" class="inline-block mt-8 px-10 py-4 bg-white text-black font-semibold rounded-md hover:bg-gray-200 transition-colors text-lg">
+                Get Instant Access & Activate Your Plan
+            </a>
+        </div>
+    </section>
+
+    <!-- Features/Benefits Section (Optional) -->
+    <section class="py-16 md:py-24 px-4 bg-near-black">
+        <div class="container mx-auto max-w-5xl">
+            <p class="text-center text-xl font-semibold mb-12">Ditch Theory, Drive Results</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
+                <div class="flex flex-col items-center space-y-4 p-6 rounded-lg hover:bg-black hover:border-gray-500 transition-colors duration-200">
+                    <div class="p-3 border border-light-gray rounded-full">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-white"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+                      </div>
+                    <p class="text-lg font-semibold">From Static Plan to Dynamic Action</p>
+                    <p class="text-sm text-muted-gray max-w-xs">Forget checklists gathering dust. Your personalized 90-Day AI Roadmap is interactive. Track progress, adapt on the fly, and access curated prompts, templates, and use-cases directly within the flow. Visualize your deployment, don't just read about it.</p>
+                </div>
+                <div class="flex flex-col items-center space-y-4 p-6 rounded-lg hover:bg-black hover:border-gray-500 transition-colors duration-200">
+                     <div class="p-3 border border-light-gray rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 16v-4"></path><path d="m15 10-3 3-3-3"></path></svg>
+                      </div>
+                    <p class="text-lg font-semibold">Instant Clarity on Your AI Readiness</p>
+                    <p class="text-sm text-muted-gray max-w-xs">Stop guessing where to start. The AI Efficiency Scorecard gives you a rapid, data-driven audit of your current marketing AI maturity in minutes. Pinpoint exact bottlenecks and high-impact opportunities for immediate improvement.</p>
+                </div>
+                <div class="flex flex-col items-center space-y-4 p-6 rounded-lg hover:bg-black hover:border-gray-500 transition-colors duration-200">
+                     <div class="p-3 border border-light-gray rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-white"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-2 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="m22 14-4.5 4.5L16 17"></path></svg>
+                      </div>
+                    <p class="text-lg font-semibold">Integrated AI Power Tools</p>
+                    <p class="text-sm text-muted-gray max-w-xs">Go beyond planning. Leverage built-in AI Task Generation to break down roadmap goals into actionable steps. Spark creativity with the AI Image Generator for campaign visuals. This isn't just a plan; it's an execution engine.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Form Placeholder Area -->
+    <section id="form-placeholder" class="py-20 md:py-32 px-4">
+        <div class="container mx-auto max-w-lg">
+            <div class="bg-near-black border border-light-gray rounded-lg p-8 shadow-xl text-center">
+                <h3 class="text-2xl font-semibold text-white mb-3">Activate Your Personalized AI Advantage Now</h3>
+                <p class="text-muted-gray mb-6 text-sm">Enter your details below to get immediate access to the platform. Start building your actionable roadmap, benchmark your AI efficiency, and leverage integrated tools within minutes. Stop planning, start implementing.</p>
+                <div class="mb-4 h-10 w-full bg-black border border-light-gray rounded-md flex items-center px-3 text-muted-gray text-sm text-left">Email Address</div>
+                <div class="h-10 px-8 py-2 bg-gray-600 text-gray-400 font-semibold rounded-md inline-block cursor-not-allowed">Unlock My AI Toolkit</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Lucide Icons Script -->
+    <script src="https://cdn.jsdelivr.net/npm/lucide/dist/lucide.min.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+
+
+<!-- Social Proof Placeholder (Optional) -->
+    <div class="text-center mt-12 mb-20">
+        <p class="text-sm text-muted-gray italic">Join forward-thinking marketing teams building their AI edge.</p>
+        <!-- Optional: Placeholder logos -->
+        <!-- <div class="flex justify-center space-x-4 mt-4 opacity-50"> ... placeholder logo divs ... </div> -->
+    </div>
+</body>
+</html>
