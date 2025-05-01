@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 
 // Define path for reading proposals
 const PROPOSALS_FILE = path.join(process.cwd(), 'data', 'proposals.json');
 
-// Fixed function signature to match Next.js 15.3.1 route handler requirements
+// Using the most compatible form for Next.js route handlers
 export async function GET(
-  request: NextRequest,
-  context: { params: { id: string } }
+  request: Request,
+  { params }: { params: { id: string } }
 ) {
-  const id = context.params.id;
+  const id = params.id;
   
   try {
     // Check if file exists

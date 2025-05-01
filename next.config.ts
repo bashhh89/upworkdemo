@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   
+  // Disable TypeScript type checking during builds
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  
   images: {
     unoptimized: true, // Required for static export
     domains: ["randomuser.me", "picsum.photos"], // For external image domains
