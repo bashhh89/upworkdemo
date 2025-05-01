@@ -1,3 +1,9 @@
+# Deliver AI
+
+A complete AI-powered suite of business tools integrated with Netlify serverless functions.
+
+## Updated for Vercel deployment - 2025-05-01
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
