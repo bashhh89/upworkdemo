@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pollinations.AI API Tester</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #1e1e1e;
+            color: #cccccc;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: #ffffff;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+            margin-top: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+        .api-section {
+            background-color: #2d2d2d;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .input-group {
+            margin-bottom: 10px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-group input[type="text"],
+        .input-group textarea,
+        .input-group select {
+            width: calc(100% - 22px);
+            padding: 10px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background-color: #3c3c3c;
+            color: #cccccc;
+        }
+         .input-group textarea {
+            min-height: 80px;
+         }
+        .input-group input[type="number"],
+        .input-group input[type="checkbox"] {
+             margin-right: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-right: 10px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result-area {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #3c3c3c;
+            border: 1px solid #555;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap; /* Wrap text */
+            word-wrap: break-word; /* Break long words */
+        }
+        .result-area img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin-top: 10px;
+        }
+        .result-area audio {
+            display: block;
+            margin-top: 10px;
+            width: 100%;
+        }
+        .loading {
+            font-style: italic;
+            color: #888;
+        }
+        /* Added basic table and list styling for readability */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+        th, td {
+            border: 1px solid #555;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #3c3c3c;
+            color: #ffffff;
+        }
+        tr:nth-child(even) {
+            background-color: #2d2d2d;
+        }
+        ul {
+            margin-top: 10px;
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pollinations.AI API Tester</h1>
+        <p>Test the Pollinations.AI APIs directly from your browser.</p>
+
+        <div class="api-section" id="image-api">
+            <h2>Image Generation API 🖼️</h2>
+            <div class="input-group">
+                <label for="image-prompt">Prompt:</label>
+                <textarea id="image-prompt" placeholder="A beautiful sunset over the ocean"></textarea>
+            </div>
+             <div class="input-group">
+                <label for="image-model">Model:</label>
+                <select id="image-model">
+                    <option value="">(Default)</option>
+                </select>
+                <button onclick="listImageModels()">List Models</button>
+            </div>
+            <div class="input-group">
+                <label for="image-seed">Seed:</label>
+                <input type="number" id="image-seed" placeholder="Optional seed">
+            </div>
+             <div class="input-group">
+                <label>Dimensions:</label>
+                Width: <input type="number" id="image-width" placeholder="1024" style="width: 80px;">
+                Height: <input type="number" id="image-height" placeholder="1024" style="width: 80px;">
+            </div>
+             <div class="input-group">
+                <input type="checkbox" id="image-nologo"> <label for="image-nologo" style="display: inline;">No Logo</label>
+                 <input type="checkbox" id="image-private"> <label for="image-private" style="display: inline;">Private</label>
+                  <input type="checkbox" id="image-enhance"> <label for="image-enhance" style="display: inline;">Enhance Prompt</label>
+                  <input type="checkbox" id="image-safe"> <label for="image-safe" style="display: inline;">Safe (Strict NSFW)</label>
+            </div>
+            <button onclick="generateImage()">Generate Image (GET)</button>
+            <div class="result-area" id="image-result"></div>
+        </div>
+
+        <div class="api-section" id="text-api">
+            <h2>Text Generation API 📝</h2>
+            <h3>Text-To-Text (GET)</h3>
+            <div class="input-group">
+                <label for="text-get-prompt">Prompt:</label>
+                <textarea id="text-get-prompt" placeholder="What is the capital of France?"></textarea>
+            </div>
+             <div class="input-group">
+                <label for="text-get-model">Model:</label>
+                 <select id="text-get-model">
+                    <option value="">(Default)</option>
+                </select>
+                 <button onclick="listTextModels()">List Models</button>
+            </div>
+            <div class="input-group">
+                <label for="text-get-seed">Seed:</label>
+                <input type="number" id="text-get-seed" placeholder="Optional seed">
+            </div>
+             <div class="input-group">
+                 <input type="checkbox" id="text-get-json"> <label for="text-get-json" style="display: inline;">JSON Response</label>
+                  <input type="checkbox" id="text-get-stream"> <label for="text-get-stream" style="display: inline;">Stream Response</label>
+                   <input type="checkbox" id="text-get-private"> <label for="text-get-private" style="display: inline;">Private</label>
+             </div>
+             <div class="input-group">
+                <label for="text-get-system">System Prompt:</label>
+                <input type="text" id="text-get-system" placeholder="Optional system prompt">
+            </div>
+            <button onclick="generateTextGet()">Generate Text (GET)</button>
+            <div class="result-area" id="text-get-result"></div>
+
+             <h3>Text & Multimodal (POST - OpenAI Compatible)</h3>
+             <p>Supports Chat, Vision, Speech-to-Text, Function Calling, Streaming.</p>
+             <div class="input-group">
+                <label for="text-post-model">Model:</label>
+                 <select id="text-post-model">
+                    <option value="">(Default)</option>
+                </select>
+            </div>
+             <div class="input-group">
+                <label for="text-post-messages">Messages (JSON Array):</label>
+                <textarea id="text-post-messages" placeholder='[{"role": "user", "content": "Tell me a story."}]'></textarea>
+                <small style="color: #888;">Enter messages as a JSON array. Example: <code>[{"role": "system", "content": "You are helpful."}, {"role": "user", "content": "What is AI?"}]</code></small>
+            </div>
+             <div class="input-group">
+                <label for="text-post-seed">Seed:</label>
+                <input type="number" id="text-post-seed" placeholder="Optional seed">
+            </div>
+             <div class="input-group">
+                  <input type="checkbox" id="text-post-stream"> <label for="text-post-stream" style="display: inline;">Stream Response</label>
+                   <input type="checkbox" id="text-post-jsonmode"> <label for="text-post-jsonmode" style="display: inline;">JSON Mode ( constrain output)</label>
+                    <input type="checkbox" id="text-post-private"> <label for="text-post-private" style="display: inline;">Private</label>
+             </div>
+             <p>Other parameters like Vision (image_url), Audio (input_audio), Tools/Function Calling need to be included manually in the "Messages" JSON.</p>
+             <button onclick="generateTextPost()">Generate Text (POST)</button>
+             <div class="result-area" id="text-post-result"></div>
+        </div>
+
+         <div class="api-section" id="audio-api">
+            <h2>Audio Generation API 🎵</h2>
+            <h3>Text-to-Speech (GET)</h3>
+             <div class="input-group">
+                <label for="audio-get-text">Text (short):</label>
+                <input type="text" id="audio-get-text" placeholder="Hello world!">
+            </div>
+             <div class="input-group">
+                <label for="audio-get-voice">Voice:</label>
+                 <select id="audio-get-voice">
+                    <option value="">(Default: alloy)</option>
+                </select>
+                 <button onclick="listAudioVoices()">List Voices</button>
+            </div>
+             <button onclick="generateAudioGet()">Generate Audio (GET)</button>
+             <div class="result-area" id="audio-get-result"></div>
+
+             <h3>Text-to-Speech (POST)</h3>
+              <div class="input-group">
+                <label for="audio-post-text">Text (longer):</label>
+                <textarea id="audio-post-text" placeholder="This text can be longer than the GET method allows."></textarea>
+            </div>
+             <div class="input-group">
+                <label for="audio-post-voice">Voice:</label>
+                 <select id="audio-post-voice">
+                     <option value="">(Default: alloy)</option>
+                 </select>
+            </div>
+             <div class="input-group">
+                  <input type="checkbox" id="audio-post-private"> <label for="audio-post-private" style="display: inline;">Private</label>
+             </div>
+             <button onclick="generateAudioPost()">Generate Audio (POST)</button>
+             <div class="result-area" id="audio-post-result"></div>
+        </div>
+
+    </div>
+
+    <script>
+        const IMAGE_API_BASE = 'https://image.pollinations.ai';
+        const TEXT_API_BASE = 'https://text.pollinations.ai';
+
+        // --- Helper to display results ---
+        function displayResult(elementId, content, isHtml = false) {
+            const resultArea = document.getElementById(elementId);
+            resultArea.innerHTML = ''; // Clear previous content
+            if (content) {
+                 if (isHtml) {
+                     resultArea.innerHTML = content;
+                 } else {
+                     resultArea.textContent = JSON.stringify(content, null, 2); // Pretty print JSON or just text
+                 }
+            } else {
+                 resultArea.textContent = 'No result or error.';
+            }
+        }
+
+         function displayLoading(elementId) {
+             const resultArea = document.getElementById(elementId);
+             resultArea.innerHTML = '<div class="loading">Loading...</div>';
+         }
+
+          function displayError(elementId, error) {
+             const resultArea = document.getElementById(elementId);
+             resultArea.innerHTML = `<div style="color: #f00;">Error: ${error.message || error}</div>`;
+              console.error("API Error:", error);
+          }
+
+        // --- Image API Functions ---
+        async function listImageModels() {
+            displayLoading('image-result');
+            const url = `${IMAGE_API_BASE}/models`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const models = await response.json();
+                console.log("Available Image Models:", models);
+
+                const modelSelect = document.getElementById('image-model');
+                modelSelect.innerHTML = '<option value="">(Default)</option>'; // Clear and add default
+                models.forEach(model => {
+                    const option = new Option(model, model);
+                    modelSelect.add(option);
+                });
+
+                // Display models in a table
+                let modelsTableHtml = '<h3>Available Image Models:</h3>';
+                if (models.length > 0) {
+                    modelsTableHtml += '<table><thead><tr><th>Model Name</th></tr></thead><tbody>';
+                    models.forEach(model => {
+                        modelsTableHtml += `<tr><td>${model}</td></tr>`;
+                    });
+                    modelsTableHtml += '</tbody></table>';
+                } else {
+                    modelsTableHtml += '<p>No image models found.</p>';
+                }
+
+                displayResult('image-result', modelsTableHtml, true); // Display as HTML
+
+            } catch (error) {
+                displayError('image-result', error);
+            }
+        }
+
+        async function generateImage() {
+            displayLoading('image-result');
+            const prompt = document.getElementById('image-prompt').value;
+            if (!prompt) {
+                displayError('image-result', new Error("Prompt is required."));
+                return;
+            }
+
+            const model = document.getElementById('image-model').value;
+            const seed = document.getElementById('image-seed').value;
+            const width = document.getElementById('image-width').value;
+            const height = document.getElementById('image-height').value;
+            const nologo = document.getElementById('image-nologo').checked;
+            const isPrivate = document.getElementById('image-private').checked;
+            const enhance = document.getElementById('image-enhance').checked;
+            const safe = document.getElementById('image-safe').checked;
+
+
+            const params = new URLSearchParams();
+            if (model) params.append('model', model);
+            if (seed) params.append('seed', seed);
+            if (width) params.append('width', width);
+            if (height) params.append('height', height);
+            if (nologo) params.append('nologo', 'true');
+            if (isPrivate) params.append('private', 'true');
+            if (enhance) params.append('enhance', 'true');
+            if (safe) params.append('safe', 'true');
+
+            const encodedPrompt = encodeURIComponent(prompt);
+            const url = `${IMAGE_API_BASE}/prompt/${encodedPrompt}?${params.toString()}`;
+
+            console.log("Fetching image from:", url);
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                     const errorText = await response.text();
+                     throw new Error(
+                        `HTTP error! status: ${response.status}, message: ${errorText || response.statusText}`
+                     );
+                }
+
+                 if (response.headers.get("Content-Type")?.includes("image/")) {
+                    const imageBlob = await response.blob();
+                    const imageUrl = URL.createObjectURL(imageBlob);
+                    const imgElement = `<img src="${imageUrl}" alt="Generated Image">`;
+                    displayResult('image-result', imgElement, true); // Display as HTML image
+                 } else {
+                     const errorText = await response.text();
+                     throw new Error(`Expected image, received ${response.headers.get("Content-Type")}. Response: ${errorText}`);
+                 }
+
+            } catch (error) {
+                displayError('image-result', error);
+            }
+        }
+
+        // --- Text API Functions ---
+         async function listTextModels() {
+             displayLoading('text-get-result'); // Use text-get-result for model list
+             const url = `${TEXT_API_BASE}/models`;
+             try {
+                 const response = await fetch(url);
+                 if (!response.ok) {
+                     const errorText = await response.text();
+                     throw new Error(`HTTP error! status: ${response.status}, message: ${errorText || response.statusText}`);
+                 }
+                 const modelsData = await response.json();
+                 console.log("Available Text Models & Voices RAW:", modelsData); // Keep raw log
+
+                 let models = [];
+                 let voices = [];
+
+                 // Try to handle object structure first
+                 if (typeof modelsData === 'object' && modelsData !== null && !Array.isArray(modelsData)) {
+                     // Look for specific keys based on the API docs structure description
+                     if (Array.isArray(modelsData['text-models'])) {
+                         // Assume array of objects with 'id'
+                         models = modelsData['text-models'].map(m => m.id).filter(Boolean);
+                     } else if (Array.isArray(modelsData.models)) {
+                          // Sometimes APIs just return { models: [...] }
+                          models = modelsData.models.map(m => m.id).filter(Boolean);
+                     } else {
+                         // Fallback for flat object where keys are model names
+                         models = Object.keys(modelsData);
+                     }
+
+
+                     voices = modelsData?.['openai-audio']?.voices || modelsData?.voices || []; // Handle voices
+
+                 } else if (Array.isArray(modelsData)) {
+                     // Handle flat array structure (previous assumption)
+                      // If array of strings, use those. If array of objects, use .id
+                      if (modelsData.length > 0 && typeof modelsData[0] === 'string') {
+                          models = modelsData; // It's an array of strings (model names)
+                      } else {
+                          // Assume array of objects with 'id'
+                          models = modelsData.map(m => m.id).filter(Boolean);
+                      }
+                     voices = []; // Assume voices aren't part of this flat array
+                 }
+
+
+                 const textGetModelSelect = document.getElementById('text-get-model');
+                 textGetModelSelect.innerHTML = '<option value="">(Default)</option>';
+                 models.forEach(model => {
+                     const option = new Option(model, model);
+                     textGetModelSelect.add(option);
+                 });
+
+                  const textPostModelSelect = document.getElementById('text-post-model');
+                 textPostModelSelect.innerHTML = '<option value="">(Default)</option>';
+                  models.forEach(model => {
+                     const option = new Option(model, model);
+                     textPostModelSelect.add(option);
+                 });
+
+                  const audioGetVoiceSelect = document.getElementById('audio-get-voice');
+                  audioGetVoiceSelect.innerHTML = '<option value="">(Default: alloy)</option>';
+                  voices.forEach(voice => {
+                      const option = new Option(voice, voice);
+                      audioGetVoiceSelect.add(option);
+                  });
+
+                   const audioPostVoiceSelect = document.getElementById('audio-post-voice');
+                  audioPostVoiceSelect.innerHTML = '<option value="">(Default: alloy)</option>';
+                   voices.forEach(voice => {
+                       const option = new Option(voice, voice);
+                       audioPostVoiceSelect.add(option);
+                   });
+
+                 // Display text models and voices in a structured format
+                 let textModelsHtml = '<h3>Available Text Models:</h3>';
+                 if (models.length > 0) {
+                    textModelsHtml += '<table><thead><tr><th>Model ID</th></tr></thead><tbody>';
+                    models.forEach(model => {
+                        textModelsHtml += `<tr><td>${model}</td></tr>`;
+                    });
+                    textModelsHtml += '</tbody></table>';
+                 } else {
+                     textModelsHtml += '<p>No text models found.</p>';
+                 }
+
+                 let voicesHtml = '<h3>Available Audio Voices:</h3>';
+                  if (voices.length > 0) {
+                     voicesHtml += '<ul>';
+                     voices.forEach(voice => {
+                         voicesHtml += `<li>${voice}</li>`;
+                     });
+                     voicesHtml += '</ul>';
+                  } else {
+                     voicesHtml += '<p>No audio voices found.</p>';
+                  }
+
+                  displayResult('text-get-result', textModelsHtml + voicesHtml, true); // Display as HTML
+
+             } catch (error) {
+                 displayError('text-get-result', error);
+             }
+         }
+
+        async function generateTextGet() {
+            const resultArea = document.getElementById('text-get-result');
+            resultArea.innerHTML = '<div class="loading">Loading...</div>';
+
+            const prompt = document.getElementById('text-get-prompt').value;
+            if (!prompt) {
+                displayError('text-get-result', new Error("Prompt is required."));
+                return;
+            }
+
+            const model = document.getElementById('text-get-model').value;
+            const seed = document.getElementById('text-get-seed').value;
+            const isJson = document.getElementById('text-get-json').checked;
+            const isStream = document.getElementById('text-get-stream').checked;
+            const isPrivate = document.getElementById('text-get-private').checked;
+            const system = document.getElementById('text-get-system').value;
+
+
+            const params = new URLSearchParams();
+            if (model) params.append('model', model);
+            if (seed) params.append('seed', seed);
+            if (isJson) params.append('json', 'true');
+            if (isStream) params.append('stream', 'true');
+            if (isPrivate) params.append('private', 'true');
+             if (system) params.append('system', system);
+
+            const encodedPrompt = encodeURIComponent(prompt);
+            const url = `${TEXT_API_BASE}/${encodedPrompt}?${params.toString()}`;
+
+            console.log("Fetching text from:", url);
+
+            try {
+                 const response = await fetch(url);
+                 if (!response.ok) {
+                     const errorText = await response.text();
+                     throw new Error(
+                        `HTTP error! status: ${response.status}, message: ${errorText || response.statusText}`
+                     );
+                 }
+
+                 if (isStream) {
+                      // Handle streaming response
+                     resultArea.textContent = ''; // Clear loading, prepare for stream
+                     const reader = response.body.getReader();
+                     const decoder = new TextDecoder();
+                     let buffer = "";
+
+                     while (true) {
+                         const { done, value } = await reader.read();
+                         if (done) {
+                             resultArea.textContent += '\n--- Stream Finished ---';
+                             break;
+                         }
+
+                         buffer += decoder.decode(value, { stream: true });
+
+                         // Process buffer line by line (SSE format: data: {...}\n\n)
+                         const lines = buffer.split("\n\n");
+                         buffer = lines.pop(); // Keep the potentially incomplete last line
+
+                         for (const line of lines) {
+                             if (line.startsWith("data: ")) {
+                                 const dataStr = line.substring(6).trim();
+                                 if (dataStr === "[DONE]") {
+                                     continue; // End of stream marker
+                                 }
+                                 try {
+                                     const chunk = JSON.parse(dataStr);
+                                     const content = chunk?.choices?.[0]?.delta?.content;
+                                     if (content) {
+                                         resultArea.textContent += content; // Append text chunks
+                                     }
+                                 } catch (e) {
+                                     console.error("Failed to parse stream chunk:", dataStr, e);
+                                     resultArea.textContent += `\n[Error parsing chunk: ${dataStr}]`;
+                                 }
+                             }
+                         }
+                     }
+
+                 } else {
+                     // Handle non-streaming response
+                     const responseText = await response.text();
+                     if (isJson) {
+                         try {
+                             const data = JSON.parse(responseText);
+                             displayResult('text-get-result', data);
+                         } catch (e) {
+                             displayError('text-get-result', new Error("Failed to parse JSON response: " + responseText));
+                         }
+                     } else {
+                         displayResult('text-get-result', responseText);
+                     }
+                 }
+
+
+            } catch (error) {
+                displayError('text-get-result', error);
+            }
+        }
+
+         async function generateTextPost() {
+            const resultArea = document.getElementById('text-post-result');
+            resultArea.innerHTML = '<div class="loading">Loading...</div>';
+
+            const model = document.getElementById('text-post-model').value || 'openai'; // Default to openai for POST
+            const messagesInput = document.getElementById('text-post-messages').value;
+            const seed = document.getElementById('text-post-seed').value;
+            const isStream = document.getElementById('text-post-stream').checked;
+            const isJsonMode = document.getElementById('text-post-jsonmode').checked;
+            const isPrivate = document.getElementById('text-post-private').checked;
+
+
+            let messages;
+            try {
+                messages = JSON.parse(messagesInput);
+                if (!Array.isArray(messages)) {
+                     throw new Error("Messages must be a JSON array.");
+                }
+            } catch (e) {
+                displayError('text-post-result', new Error("Invalid Messages JSON: " + e.message));
+                return;
+            }
+
+            const payload = {
+                model: model,
+                messages: messages,
+                stream: isStream,
+                private: isPrivate,
+            };
+             if (seed) payload.seed = parseInt(seed, 10); // Ensure seed is number
+             if (isJsonMode) payload.response_format = { type: "json_object" };
+
+
+            const url = `${TEXT_API_BASE}/openai`;
+
+            console.log("Sending POST request to:", url, payload);
+
+             try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                         ...(isStream ? { "Accept": "text/event-stream" } : {}) // Add Accept header for streaming
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!response.ok) {
+                     const errorText = await response.text();
+                     throw new Error(
+                         `HTTP error! status: ${response.status}, message: ${errorText || response.statusText}`
+                     );
+                }
+
+                 if (isStream) {
+                      // Handle streaming response (similar to GET stream)
+                     resultArea.textContent = ''; // Clear loading, prepare for stream
+                     const reader = response.body.getReader();
+                     const decoder = new TextDecoder();
+                     let buffer = "";
+
+                     while (true) {
+                         const { done, value } = await reader.read();
+                         if (done) {
+                             resultArea.textContent += '\n--- Stream Finished ---';
+                             break;
+                         }
+
+                         buffer += decoder.decode(value, { stream: true });
+
+                         // Process buffer line by line (SSE format: data: {...}\n\n)
+                         const lines = buffer.split("\n\n");
+                         buffer = lines.pop(); // Keep the potentially incomplete last line
+
+                         for (const line of lines) {
+                             if (line.startsWith("data: ")) {
+                                 const dataStr = line.substring(6).trim();
+                                 if (dataStr === "[DONE]") {
+                                     continue; // End of stream marker
+                                 }
+                                 try {
+                                     const chunk = JSON.parse(dataStr);
+                                     const content = chunk?.choices?.[0]?.delta?.content;
+                                     if (content) {
+                                         resultArea.textContent += content; // Append text chunks
+                                     }
+                                      // Handle tool_calls if needed for function calling example
+                                      // const toolCalls = chunk?.choices?.[0]?.delta?.tool_calls;
+                                      // if (toolCalls) { /* process tool calls */ }
+
+                                 } catch (e) {
+                                     console.error("Failed to parse stream chunk:", dataStr, e);
+                                     resultArea.textContent += `\n[Error parsing chunk: ${dataStr}]`;
+                                 }
+                             }
+                         }
+                     }
+
+
+                 } else {
+                     // Handle non-streaming response
+                    const result = await response.json();
+                    console.log("POST Response:", result);
+                    displayResult('text-post-result', result);
+                 }
+
+
+            } catch (error) {
+                 displayError('text-post-result', error);
+            }
+         }
+
+
+        // --- Audio API Functions ---
+        async function listAudioVoices() {
+             displayLoading('audio-get-result'); // Use audio-get-result for voice list
+             const url = `${TEXT_API_BASE}/models`; // Voices are listed under text models endpoint
+             try {
+                 const response = await fetch(url);
+                 if (!response.ok) {
+                     throw new Error(`HTTP error! status: ${response.status}`);
+                 }
+                 const modelsData = await response.json();
+                 console.log("Available Text Models & Voices:", modelsData);
+
+                 const voices = modelsData?.['openai-audio']?.voices || modelsData?.voices || []; // Handle potential different structures
+
+                 const audioGetVoiceSelect = document.getElementById('audio-get-voice');
+                  audioGetVoiceSelect.innerHTML = '<option value="">(Default: alloy)</option>';
+                  voices.forEach(voice => {
+                      const option = new Option(voice, voice);
+                      audioGetVoiceSelect.add(option);
+                  });
+
+                   const audioPostVoiceSelect = document.getElementById('audio-post-voice');
+                  audioPostVoiceSelect.innerHTML = '<option value="">(Default: alloy)</option>';
+                   voices.forEach(voice => {
+                       const option = new Option(voice, voice);
+                       audioPostVoiceSelect.add(option);
+                   });
+
+                  // Display voices in a list
+                  let voicesListHtml = '<h3>Available Audio Voices:</h3>';
+                  if (voices.length > 0) {
+                     voicesListHtml += '<ul>';
+                     voices.forEach(voice => {
+                         voicesListHtml += `<li>${voice}</li>`;
+                     });
+                     voicesListHtml += '</ul>';
+                  } else {
+                     voicesListHtml += '<p>No audio voices found.</p>';
+                  }
+
+
+                  displayResult('audio-get-result', voicesListHtml, true); // Display as HTML
+
+             } catch (error) {
+                 displayError('audio-get-result', error);
+             }
+        }
+
+        async function generateAudioGet() {
+             displayLoading('audio-get-result');
+             const text = document.getElementById('audio-get-text').value;
+             const voice = document.getElementById('audio-get-voice').value || 'alloy'; // Default voice
+
+             if (!text) {
+                 displayError('audio-get-result', new Error("Text is required."));
+                 return;
+             }
+
+             const encodedText = encodeURIComponent(text);
+             const params = new URLSearchParams({
+                 model: "openai-audio",
+                 voice: voice,
+             });
+             const url = `${TEXT_API_BASE}/${encodedText}?${params.toString()}`;
+
+             console.log("Generating audio via GET:", url);
+
+             try {
+                 const response = await fetch(url);
+
+                 if (!response.ok) {
+                     const errorText = await response.text();
+                     throw new Error(
+                         `HTTP error! status: ${response.status}, message: ${errorText || response.statusText}`
+                     );
+                 }
+
+                 if (response.headers.get("Content-Type")?.includes("audio/mpeg")) {
+                     const audioBlob = await response.blob();
+                     const audioUrl = URL.createObjectURL(audioBlob);
+                     const audioElement = `<audio controls src="${audioUrl}"></audio>`;
+                     displayResult('audio-get-result', audioElement, true); // Display as HTML audio player
+                 } else {
+                     const errorText = await response.text();
+                     throw new Error(`Expected audio, received ${response.headers.get("Content-Type")}. Response: ${errorText}`);
+                 }
+             } catch (error) {
+                 displayError('audio-get-result', error);
+             }
+        }
+
+         async function generateAudioPost() {
+             displayLoading('audio-post-result');
+             const text = document.getElementById('audio-post-text').value;
+             const voice = document.getElementById('audio-post-voice').value || 'alloy'; // Default voice
+             const isPrivate = document.getElementById('audio-post-private').checked;
+
+             if (!text) {
+                 displayError('audio-post-result', new Error("Text is required."));
+                 return;
+             }
+
+              const payload = {
+                 model: "openai-audio",
+                 messages: [{ role: "user", content: text }],
+                 voice: voice,
+                 private: isPrivate
+             };
+
+             const url = `${TEXT_API_BASE}/openai`;
+
+             console.log("Generating audio via POST:", url, payload);
+
+              try {
+                 const response = await fetch(url, {
+                     method: "POST",
+                     headers: { "Content-Type": "application/json" },
+                     body: JSON.stringify(payload),
+                 });
+
+                 if (!response.ok) {
+                     const errorText = await response.text();
+                     throw new Error(
+                         `HTTP error! status: ${response.status}, message: ${errorText || response.statusText}`
+                     );
+                 }
+
+                 if (response.headers.get("Content-Type")?.includes("audio/mpeg")) {
+                     const audioBlob = await response.blob();
+                     const audioUrl = URL.createObjectURL(audioBlob);
+                     const audioElement = `<audio controls src="${audioUrl}"></audio>`;
+                     displayResult('audio-post-result', audioElement, true); // Display as HTML audio player
+                 } else {
+                      const errorText = await response.text();
+                      throw new Error(`Expected audio, received ${response.headers.get("Content-Type")}. Response: ${errorText}`);
+                 }
+
+             } catch (error) {
+                 displayError('audio-post-result', error);
+             }
+         }
+
+         // --- Initial Load ---
+         document.addEventListener('DOMContentLoaded', () => {
+             // Optionally load models and voices on page load
+             listImageModels();
+             listTextModels(); // This also populates audio voice selects
+         });
+
+
+    </script>
+</body>
+</html>

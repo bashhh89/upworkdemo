@@ -1,4 +1,10 @@
 import type { NextConfig } from "next";
+let withSentryConfig;
+try {
+  withSentryConfig = require('@sentry/nextjs').withSentryConfig;
+} catch (e) {
+  withSentryConfig = (config) => config;
+}
 
 const nextConfig: NextConfig = {
   // Enable both static and server-side rendering
@@ -19,6 +25,12 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true, // Required for static export
     domains: ["randomuser.me", "picsum.photos"], // For external image domains
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
   },
   
   // Detect if we're running on Netlify or Vercel
@@ -38,6 +50,28 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Polyfills for Node.js core modules used by dependencies
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        buffer: require.resolve('buffer/'),
+        stream: require.resolve('stream-browserify'),
+        events: require.resolve('events/'),
+        fs: false,
+        path: false,
+        os: false,
+      };
+    }
+    return config;
+  },
 };
 
-export default nextConfig;
+// For Sentry config
+const sentryWebpackPluginOptions = {
+  silent: true,
+};
+
+// Export configuration with optional Sentry integration
+export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
+// Import buffer shim for polyfilling
+import "@/lib/buffer-shim";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -16,9 +18,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body
-        className={`${inter.className} h-screen`}
+        className={`${inter.className} h-screen dark bg-[#0a0a0a]`}
       >
         {children}
         <Toaster />

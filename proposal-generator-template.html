@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proposal Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'dark-bg': '#0f172a',
+            'card-bg': '#1e293b',
+            'border': '#334155',
+            'accent': '#2563eb',
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-950 text-gray-200 font-sans min-h-screen">
+  <div class="flex">
+    <!-- Sidebar -->
+    <aside class="w-64 p-4 bg-slate-900 border-r border-slate-700 hidden md:block min-h-screen">
+      <div class="mb-8">
+        <h1 class="text-xl font-semibold text-white flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Acey Enterprises
+        </h1>
+        <p class="text-xs text-gray-400 mt-1">Telemarketing Lead Generation & Sales Process Development Proposal</p>
+      </div>
+      
+      <nav>
+        <ul class="space-y-1">
+          <li>
+            <a href="#introduction" class="flex items-center px-4 py-2 text-gray-300 rounded hover:bg-slate-800 hover:text-white">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Introduction
+            </a>
+          </li>
+          <li>
+            <a href="#objectives" class="flex items-center px-4 py-2 text-gray-300 rounded hover:bg-slate-800 hover:text-white">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              </svg>
+              Objectives
+            </a>
+          </li>
+          <li>
+            <a href="#client-needs" class="flex items-center px-4 py-2 text-white bg-slate-800 rounded">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+              </svg>
+              Understanding Client Needs
+            </a>
+          </li>
+          <li>
+            <a href="#solution-strategy" class="flex items-center px-4 py-2 text-gray-300 rounded hover:bg-slate-800 hover:text-white">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+              Solution Strategy
+            </a>
+          </li>
+          <li>
+            <a href="#sales-process" class="flex items-center px-4 py-2 text-gray-300 rounded hover:bg-slate-800 hover:text-white">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+              </svg>
+              Sales Process Development
+            </a>
+          </li>
+          <li>
+            <a href="#staffing" class="flex items-center px-4 py-2 text-gray-300 rounded hover:bg-slate-800 hover:text-white">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+              </svg>
+              Staffing and Pricing
+            </a>
+          </li>
+          <li>
+            <a href="#timeline" class="flex items-center px-4 py-2 text-gray-300 rounded hover:bg-slate-800 hover:text-white">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+              Timeline
+            </a>
+          </li>
+          <li>
+            <a href="#conclusion" class="flex items-center px-4 py-2 text-gray-300 rounded hover:bg-slate-800 hover:text-white">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Conclusion
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="flex-1 p-6 md:p-8 lg:p-10">
+      <!-- Introduction Section -->
+      <section id="introduction" class="mb-10">
+        <h2 class="text-2xl font-semibold text-white mb-6">Introduction</h2>
+        <div class="bg-slate-900 rounded-lg border border-slate-700 p-6 mb-6">
+          <p class="text-gray-300 leading-relaxed">
+            Thank you for considering our services for your telemarketing lead generation needs. This proposal outlines a comprehensive approach to elevate your sales process through targeted outreach, systematic follow-up, and effective conversion strategies. Our team specializes in creating customized telemarketing solutions that drive measurable results.
+          </p>
+        </div>
+      </section>
+      
+      <!-- Understanding Client Needs Section -->
+      <section id="client-needs" class="mb-10">
+        <h2 class="text-2xl font-semibold text-white mb-6">Understanding Client Needs</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-slate-900 rounded-lg border border-slate-700 p-6">
+            <h3 class="text-lg font-semibold text-white mb-3 border-l-4 border-blue-500 pl-3">Market Penetration</h3>
+            <p class="text-gray-300 leading-relaxed text-sm">
+              Expand reach into new markets and demographic segments through targeted outreach campaigns.
+            </p>
+          </div>
+          <div class="bg-slate-900 rounded-lg border border-slate-700 p-6">
+            <h3 class="text-lg font-semibold text-white mb-3 border-l-4 border-blue-500 pl-3">Sales Cycle Optimization</h3>
+            <p class="text-gray-300 leading-relaxed text-sm">
+              Streamline the sales process to reduce time from initial contact to conversion.
+            </p>
+          </div>
+          <div class="bg-slate-900 rounded-lg border border-slate-700 p-6">
+            <h3 class="text-lg font-semibold text-white mb-3 border-l-4 border-blue-500 pl-3">Conversion Improvement</h3>
+            <p class="text-gray-300 leading-relaxed text-sm">
+              Increase lead-to-customer conversion rates through strategic follow-up protocols.
+            </p>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Solution Strategy Section -->
+      <section id="solution-strategy" class="mb-10">
+        <h2 class="text-2xl font-semibold text-white mb-6">Solution Strategy</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-slate-900 rounded-lg border border-slate-700 p-6">
+            <h3 class="text-lg font-semibold text-white mb-3">Strategic Approach</h3>
+            <ul class="list-disc pl-5 space-y-2 text-gray-300">
+              <li>Custom scripting tailored to your product/service value proposition</li>
+              <li>Targeted prospect list development based on ideal customer profiles</li>
+              <li>Multi-touch engagement strategy across channels</li>
+              <li>Advanced lead qualification methodology</li>
+            </ul>
+          </div>
+          <div class="bg-slate-900 rounded-lg border border-slate-700 p-6">
+            <h3 class="text-lg font-semibold text-white mb-3">Technology Integration</h3>
+            <ul class="list-disc pl-5 space-y-2 text-gray-300">
+              <li>CRM integration for seamless lead management</li>
+              <li>Call tracking and analytics implementation</li>
+              <li>Automated follow-up sequences</li>
+              <li>Performance reporting dashboard</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Sales Process Flow -->
+      <section id="sales-process" class="mb-10">
+        <h2 class="text-2xl font-semibold text-white mb-6">Sales Process Development</h2>
+        <div class="bg-slate-900 rounded-lg border border-slate-700 p-6 mb-6">
+          <!-- Flow chart visualization -->
+          <div class="flex flex-col md:flex-row justify-between items-center">
+            <div class="bg-slate-800 border border-slate-600 rounded-lg p-4 text-center mb-4 md:mb-0 w-full md:w-1/4">
+              <div class="bg-blue-500 text-white w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2">1</div>
+              <p class="text-white font-medium">Lead Generation</p>
+              <p class="text-xs text-gray-400 mt-1">Initial outreach & prospecting</p>
+            </div>
+            <div class="hidden md:block text-blue-500">→</div>
+            <div class="bg-slate-800 border border-slate-600 rounded-lg p-4 text-center mb-4 md:mb-0 w-full md:w-1/4">
+              <div class="bg-blue-500 text-white w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2">2</div>
+              <p class="text-white font-medium">Qualification</p>
+              <p class="text-xs text-gray-400 mt-1">BANT criteria assessment</p>
+            </div>
+            <div class="hidden md:block text-blue-500">→</div>
+            <div class="bg-slate-800 border border-slate-600 rounded-lg p-4 text-center mb-4 md:mb-0 w-full md:w-1/4">
+              <div class="bg-blue-500 text-white w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2">3</div>
+              <p class="text-white font-medium">Appointment Setting</p>
+              <p class="text-xs text-gray-400 mt-1">Schedule with sales team</p>
+            </div>
+            <div class="hidden md:block text-blue-500">→</div>
+            <div class="bg-slate-800 border border-slate-600 rounded-lg p-4 text-center w-full md:w-1/4">
+              <div class="bg-blue-500 text-white w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2">4</div>
+              <p class="text-white font-medium">Conversion</p>
+              <p class="text-xs text-gray-400 mt-1">Close deals & follow-up</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Staffing and Pricing -->
+      <section id="staffing" class="mb-10">
+        <h2 class="text-2xl font-semibold text-white mb-6">Staffing and Pricing</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div class="bg-slate-900 rounded-lg border border-slate-700 p-6">
+            <h3 class="text-lg font-semibold text-white mb-4">Option 1: Standard Package</h3>
+            <div class="text-4xl font-bold text-blue-500 mb-4">$4,500<span class="text-sm text-gray-400 font-normal">/month</span></div>
+            <ul class="space-y-2 mb-4">
+              <li class="flex items-start">
+                <svg class="w-5 h-5 text-blue-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="text-gray-300">2 Full-time telemarketers</span>
+              </li>
+              <li class="flex items-start">
+                <svg class="w-5 h-5 text-blue-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="text-gray-300">100+ calls per day</span>
+              </li>
+              <li class="flex items-start">
+                <svg class="w-5 h-5 text-blue-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="text-gray-300">Weekly performance reports</span>
+              </li>
+              <li class="flex items-start">
+                <svg class="w-5 h-5 text-blue-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="text-gray-300">Basic CRM integration</span>
+              </li>
+            </ul>
+            <button class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition">Select Package</button>
+          </div>
+          
+          <div class="bg-slate-900 rounded-lg border border-blue-500 p-6 relative">
+            <div class="absolute top-0 right-0 bg-blue-500 text-white text-xs py-1 px-3 rounded-bl-lg rounded-tr-lg font-medium">RECOMMENDED</div>
+            <h3 class="text-lg font-semibold text-white mb-4">Option 2: Premium Package</h3>
+            <div class="text-4xl font-bold text-blue-500 mb-4">$7,500<span class="text-sm text-gray-400 font-normal">/month</span></div>
+            <ul class="space-y-2 mb-4">
+              <li class="flex items-start">
+                <svg class="w-5 h-5 text-blue-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="text-gray-300">4 Full-time telemarketers</span>
+              </li>
+              <li class="flex items-start">
+                <svg class="w-5 h-5 text-blue-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="text-gray-300">200+ calls per day</span>
+              </li>
+              <li class="flex items-start">
+                <svg class="w-5 h-5 text-blue-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="text-gray-300">Daily performance reports</span>
+              </li>
+              <li class="flex items-start">
+                <svg class="w-5 h-5 text-blue-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="text-gray-300">Advanced CRM integration</span>
+              </li>
+              <li class="flex items-start">
+                <svg class="w-5 h-5 text-blue-500 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="text-gray-300">Dedicated account manager</span>
+              </li>
+            </ul>
+            <button class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition">Select Package</button>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Conclusion -->
+      <section id="conclusion" class="mb-10">
+        <h2 class="text-2xl font-semibold text-white mb-6">Conclusion</h2>
+        <div class="bg-slate-900 rounded-lg border border-slate-700 p-6">
+          <p class="text-gray-300 leading-relaxed mb-4">
+            We are confident that our telemarketing lead generation services will help you achieve your sales objectives and drive significant growth for your business. Our team is ready to implement this strategy and begin generating qualified leads immediately.
+          </p>
+          <div class="flex flex-col md:flex-row md:justify-between items-center mt-8">
+            <div class="text-center md:text-left mb-4 md:mb-0">
+              <p class="font-semibold text-white">James Wilson</p>
+              <p class="text-sm text-gray-400">Sales Director</p>
+              <p class="text-sm text-blue-500">james@aceyenterprises.com</p>
+            </div>
+            <button class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-lg transition flex items-center">
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+              </svg>
+              Download Full Proposal
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html> 

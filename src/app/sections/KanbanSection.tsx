@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react'; // Added useMemo
 import {
   DndContext,
   DragEndEvent,
@@ -18,46 +19,123 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { v4 as uuidv4 } from 'uuid';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"; // Imported Shadcn Select components
+import { KanbanTaskDetailModal } from '@/components/kanban-task-detail-modal';
+import { PipelineCustomizationModal } from '@/components/pipeline-customization-modal'; // Import the new modal
 
 interface Task {
   id: UniqueIdentifier;
   content: string;
-  phase: string;
+  phase: string; // Corresponds to a stage name
   priority: string;
+  pipelineId: string; // Added pipelineId
+}
+
+// Define Pipeline interface
+interface Pipeline {
+  id: string;
+  name: string;
+  type: string; // e.g., 'tasks', 'leads', 'custom'
+  stages: string[]; // Array of stage names (columns)
 }
 
 interface TasksState {
-  [key: string]: Task[];
+  [pipelineId: string]: {
+    [stage: string]: Task[];
+  };
 }
 
+// Mock Pipeline Data
+const initialPipelines: Pipeline[] = [
+  {
+    id: 'tasks-pipeline',
+    name: 'Task Management',
+    type: 'tasks',
+    stages: ['To Do', 'In Progress', 'Done'],
+  },
+  {
+    id: 'leads-pipeline',
+    name: 'Sales Leads [Planned]',
+    type: 'leads',
+    stages: ['New Lead', 'Contacted', 'Qualified', 'Closed'],
+  },
+];
+
+// Mock Task Data (updated to include pipelineId)
 const initialTasks: TasksState = {
-  todo: [
-    { id: 'task-1', content: 'Audit current tech stack', phase: 'Phase 1', priority: 'High' },
-    { id: 'task-2', content: 'Define initial KPIs', phase: 'Phase 1', priority: 'Medium' },
-    { id: 'task-3', content: 'Document existing processes', phase: 'Phase 1', priority: 'Medium' },
-  ],
-  inprogress: [
-    { id: 'task-4', content: 'Map customer journey', phase: 'Phase 1', priority: 'High' },
-    { id: 'task-5', content: 'Evaluate AI vendors', phase: 'Phase 1', priority: 'Medium' },
-  ],
-  done: [
-    { id: 'task-6', content: 'Identify key processes', phase: 'Phase 1', priority: 'High' },
-    { id: 'task-7', content: 'Initial team training', phase: 'Phase 1', priority: 'Medium' },
-  ],
+  'tasks-pipeline': {
+    'To Do': [
+      { id: 'task-1', content: 'Audit current tech stack', phase: 'To Do', priority: 'High', pipelineId: 'tasks-pipeline' },
+      { id: 'task-2', content: 'Define initial KPIs', phase: 'To Do', priority: 'Medium', pipelineId: 'tasks-pipeline' },
+      { id: 'task-3', content: 'Document existing processes', phase: 'To Do', priority: 'Medium', pipelineId: 'tasks-pipeline' },
+    ],
+    'In Progress': [
+      { id: 'task-4', content: 'Map customer journey', phase: 'In Progress', priority: 'High', pipelineId: 'tasks-pipeline' },
+      { id: 'task-5', content: 'Evaluate AI vendors', phase: 'In Progress', priority: 'Medium', pipelineId: 'tasks-pipeline' },
+    ],
+    'Done': [
+      { id: 'task-6', content: 'Identify key processes', phase: 'Done', priority: 'High', pipelineId: 'tasks-pipeline' },
+      { id: 'task-7', content: 'Initial team training', phase: 'Done', priority: 'Medium', pipelineId: 'tasks-pipeline' },
+    ],
+  },
+  'leads-pipeline': {
+    'New Lead': [
+       { id: 'lead-1', content: 'Contact potential client A', phase: 'New Lead', priority: 'High', pipelineId: 'leads-pipeline' },
+       { id: 'lead-2', content: 'Research company B', phase: 'New Lead', priority: 'Medium', pipelineId: 'leads-pipeline' },
+    ],
+    'Contacted': [],
+    'Qualified': [],
+    'Closed': [],
+  },
 };
 
-const columnTitles = {
-  todo: 'To Do',
-  inprogress: 'In Progress',
-  done: 'Done',
-};
 
 export default function KanbanSection() {
   const { toast } = useToast();
-  const [tasks, setTasks] = useState<TasksState>(initialTasks);
+  const [pipelines, setPipelines] = useState<Pipeline[]>(initialPipelines);
+  const [activePipelineId, setActivePipelineId] = useState(initialPipelines[0].id);
+  const [tasks, setTasks] = useState<TasksState>(initialTasks); // Tasks are now nested by pipeline and stage
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
-  const [aiGoalInput, setAiGoalInput] = useState('');
+  const [aiGoalInput, setAiGoalInput] = useState(''); // Used for task generation (specific to task pipeline)
   const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
+
+  // State for the modals
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // Renamed for clarity
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false); // State for customization modal
+
+  // Handler for card click (Detail Modal)
+  const handleCardClick = (task: Task) => {
+    setSelectedTask(task);
+    setIsDetailModalOpen(true);
+  };
+
+  // Handler to close the Detail Modal
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedTask(null);
+  };
+
+   // Handler to close the Customization Modal
+  const handleCloseCustomizationModal = () => {
+    setIsCustomizationModalOpen(false);
+  };
+
+  // Handler to save a new pipeline
+  const handleSaveNewPipeline = (newPipeline: Pipeline) => {
+    setPipelines([...pipelines, newPipeline]);
+    // Optionally set the new pipeline as active: setActivePipelineId(newPipeline.id);
+    setTasks({ ...tasks, [newPipeline.id]: Object.fromEntries(newPipeline.stages.map(stage => [stage, []])) }); // Initialize empty tasks for new pipeline
+    handleCloseCustomizationModal();
+    toast({ title: "Success!", description: `Pipeline "${newPipeline.name}" created.` });
+  };
+
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -67,16 +145,29 @@ export default function KanbanSection() {
     })
   );
 
-  function findContainer(id: UniqueIdentifier) {
-    if (id in tasks) return id;
+  // Get the currently active pipeline
+  const activePipeline = useMemo(() => {
+    return pipelines.find(p => p.id === activePipelineId);
+  }, [pipelines, activePipelineId]);
 
-    for (const [containerId, containerTasks] of Object.entries(tasks)) {
-      if (containerTasks.some(task => task.id === id)) {
-        return containerId;
-      }
-    }
-    return null;
-  }
+  // Get tasks for the active pipeline, grouped by stage
+   const activePipelineTasks = useMemo(() => {
+    return tasks[activePipelineId] || {};
+  }, [tasks, activePipelineId]);
+
+
+  // Find container logic updated for nested structure
+  function findContainer(id: UniqueIdentifier, currentTasks: TasksState) {
+     for (const [pipelineId, pipelineTasks] of Object.entries(currentTasks)) {
+       for (const [stage, stageTasks] of Object.entries(pipelineTasks)) {
+         if (stageTasks.some(task => task.id === id)) {
+           return { pipelineId, stage };
+         }
+       }
+     }
+     return null; // Task not found
+   }
+
 
   function handleDragStart(event: DragStartEvent) {
     const { active } = event;
@@ -85,58 +176,75 @@ export default function KanbanSection() {
 
   function handleDragOver(event: DragOverEvent) {
     const { active, over } = event;
-    if (!over) return;
+    if (!over || !activePipeline) return; // Ensure activePipeline exists
 
     const activeId = active.id;
     const overId = over.id;
 
     if (activeId === overId) return;
 
-    const activeContainer = findContainer(activeId);
-    const overContainer = findContainer(overId);
+    const activeLocation = findContainer(activeId, tasks); // Updated findContainer call
+    // Over can be a task (move within stage/pipeline) or a column (move to new stage/pipeline)
+    const overLocation = findContainer(overId, tasks); // Check if overId is a task
 
-    if (!activeContainer || !overContainer) return;
+    const overIsColumn = activePipeline.stages.includes(String(overId)); // Check if overId is a stage in the active pipeline
 
-    if (activeContainer !== overContainer) {
-      setTasks(prev => {
-        const activeItems = prev[activeContainer];
-        const overItems = prev[overContainer];
+    if (!activeLocation) return; // Should not happen if activeId is a task
 
-        const activeIndex = activeItems.findIndex(item => item.id === activeId);
-        const overIndex = overItems.findIndex(item => item.id === overId);
+    // If dragging over a column title within the active pipeline
+    if (overIsColumn && activeLocation.pipelineId === activePipelineId) {
+        const destinationStage = String(overId);
+        setTasks(prevTasks => {
+            const taskToMove = prevTasks[activeLocation.pipelineId][activeLocation.stage].find(task => task.id === activeId);
+            if (!taskToMove) return prevTasks;
 
-        let newIndex: number;
-        if (overId in prev) {
-          newIndex = overItems.length + 1;
-        } else {
-          const isBelowOverItem = over && active.rect.current.translated &&
-            active.rect.current.translated.top > over.rect.top + over.rect.height;
+            const updatedTasks = { ...prevTasks };
+            // Remove task from old stage
+            updatedTasks[activeLocation.pipelineId][activeLocation.stage] = updatedTasks[activeLocation.pipelineId][activeLocation.stage].filter(task => task.id !== activeId);
+            // Add task to new stage, update its phase
+            updatedTasks[activeLocation.pipelineId][destinationStage] = [...updatedTasks[activeLocation.pipelineId][destinationStage], { ...taskToMove, phase: destinationStage }];
 
-          const modifier = isBelowOverItem ? 1 : 0;
-
-          newIndex = overIndex >= 0 ? overIndex + modifier : overItems.length + 1;
-        }
-
-        const updatedTasks = {
-          ...prev,
-          [activeContainer]: [
-            ...prev[activeContainer].filter(item => item.id !== active.id)
-          ],
-          [overContainer]: [
-            ...prev[overContainer].slice(0, newIndex),
-            tasks[activeContainer][activeIndex],
-            ...prev[overContainer].slice(newIndex)
-          ]
-        };
-
-        return updatedTasks;
-      });
+            return updatedTasks;
+        });
+        return; // Stop further processing if moved to a column
     }
-  }
+
+
+     // If dragging over another task (either in the same or different stage/pipeline)
+     if (overLocation) {
+       setTasks(prevTasks => {
+         const taskToMove = prevTasks[activeLocation.pipelineId][activeLocation.stage].find(task => task.id === activeId);
+         if (!taskToMove) return prevTasks;
+
+         const updatedTasks = { ...prevTasks };
+
+         // Remove from old location
+         updatedTasks[activeLocation.pipelineId][activeLocation.stage] = updatedTasks[activeLocation.pipelineId][activeLocation.stage].filter(task => task.id !== activeId);
+
+         // Add to new location
+         const overItems = updatedTasks[overLocation.pipelineId][overLocation.stage];
+         const overIndex = overItems.findIndex(item => item.id === overId);
+
+         const newPhase = overLocation.stage; // New phase is the stage of the over task
+
+         if (overIndex >= 0) {
+            // Insert before the over task
+            updatedTasks[overLocation.pipelineId][overLocation.stage].splice(overIndex, 0, { ...taskToMove, phase: newPhase, pipelineId: overLocation.pipelineId });
+         } else {
+             // Should not happen if overLocation is a task, but as fallback
+            updatedTasks[overLocation.pipelineId][overLocation.stage].push({ ...taskToMove, phase: newPhase, pipelineId: overLocation.pipelineId });
+         }
+
+         return updatedTasks;
+       });
+     }
+   }
+
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     setActiveId(null);
+    if (!activePipeline) return; // Ensure activePipeline exists
 
     if (!over) return;
 
@@ -145,50 +253,74 @@ export default function KanbanSection() {
 
     if (activeId === overId) return;
 
-    const activeContainer = findContainer(activeId);
-    const overContainer = findContainer(overId);
+    const activeLocation = findContainer(activeId, tasks);
+    const overLocation = findContainer(overId, tasks);
+    const overIsColumn = activePipeline.stages.includes(String(overId)); // Check if overId is a stage in the active pipeline
 
-    if (!activeContainer || !overContainer) return;
 
-    if (activeContainer === overContainer) {
-      setTasks(prev => {
-        const items = prev[activeContainer];
-        const oldIndex = items.findIndex(item => item.id === activeId);
-        const newIndex = items.findIndex(item => item.id === overId);
+    if (!activeLocation) return; // Should not happen if activeId is a task
 
-        return {
-          ...prev,
-          [activeContainer]: arrayMove(items, oldIndex, newIndex),
-        };
-      });
-    } else {
-      setTasks(prev => {
-        const activeItems = [...prev[activeContainer]];
-        const overItems = [...prev[overContainer]];
-        const activeIndex = activeItems.findIndex(item => item.id === activeId);
-        const overIndex = overItems.findIndex(item => item.id === overId);
+    // Handle drops onto a column title within the active pipeline
+    if (overIsColumn && activeLocation.pipelineId === activePipelineId) {
+        const destinationStage = String(overId);
+         setTasks(prevTasks => {
+            const taskToMove = prevTasks[activeLocation.pipelineId][activeLocation.stage].find(task => task.id === activeId);
+             if (!taskToMove) return prevTasks;
 
-        let newIndex: number;
-        if (overId in prev) {
-          newIndex = overItems.length;
-        } else {
-          newIndex = overIndex >= 0 ? overIndex : overItems.length;
-        }
+             const updatedTasks = { ...prevTasks };
+             // Remove task from old stage
+             updatedTasks[activeLocation.pipelineId][activeLocation.stage] = updatedTasks[activeLocation.pipelineId][activeLocation.stage].filter(task => task.id !== activeId);
+             // Add task to new stage, update its phase
+             updatedTasks[activeLocation.pipelineId][destinationStage] = [...updatedTasks[activeLocation.pipelineId][destinationStage], { ...taskToMove, phase: destinationStage }];
 
-        const item = activeItems[activeIndex];
-        activeItems.splice(activeIndex, 1);
-        overItems.splice(newIndex, 0, item);
-
-        return {
-          ...prev,
-          [activeContainer]: activeItems,
-          [overContainer]: overItems,
-        };
-      });
+             return updatedTasks;
+         });
+         return;
     }
-  }
 
+
+    // Handle drops onto another task
+    if (overLocation) {
+       setTasks(prevTasks => {
+         const taskToMove = prevTasks[activeLocation.pipelineId][activeLocation.stage].find(task => task.id === activeId);
+          if (!taskToMove) return prevTasks;
+
+         const updatedTasks = { ...prevTasks };
+
+         // Remove from old location
+         updatedTasks[activeLocation.pipelineId][activeLocation.stage] = updatedTasks[activeLocation.pipelineId][activeLocation.stage].filter(task => task.id !== activeId);
+
+         // Add to new location using arrayMove
+         const overItems = updatedTasks[overLocation.pipelineId][overLocation.stage];
+         const oldIndex = prevTasks[activeLocation.pipelineId][activeLocation.stage].findIndex(task => task.id === activeId); // Use previous state for old index
+         const newIndex = overItems.findIndex(item => item.id === overId);
+         const newPhase = overLocation.stage; // New phase is the stage of the over task
+
+         // If moving within the same stage/pipeline, use arrayMove
+         if (activeLocation.pipelineId === overLocation.pipelineId && activeLocation.stage === overLocation.stage) {
+            updatedTasks[activeLocation.pipelineId][activeLocation.stage] = arrayMove(overItems, oldIndex, newIndex).map(task => ({...task, phase: newPhase})); // Ensure phase is correct after move
+         } else {
+            // Moving to a different stage/pipeline, insert the task
+             updatedTasks[overLocation.pipelineId][overLocation.stage] = [
+                ...overItems.slice(0, newIndex),
+                { ...taskToMove, phase: newPhase, pipelineId: overLocation.pipelineId },
+                ...overItems.slice(newIndex)
+             ];
+         }
+
+         return updatedTasks;
+       });
+     }
+   }
+
+
+  // Generate tasks function - specific to the 'tasks-pipeline'
   const handleGenerateTasks = async () => {
+     if (activePipelineId !== 'tasks-pipeline') {
+        toast({ title: "Feature Limited", description: "AI Task Generation is currently only available for the 'Task Management' pipeline.", variant: "default" });
+        return;
+     }
+
     const goal = aiGoalInput.trim();
     if (!goal) {
       toast({ title: "Input Required", description: "Please enter a goal or phase to generate tasks.", variant: "destructive" });
@@ -197,8 +329,9 @@ export default function KanbanSection() {
     setIsGeneratingTasks(true);
 
     // Updated System Prompt for better JSON reliability
-    const systemPrompt = `You are an assistant helping plan AI implementation for marketing agencies. Generate 3-5 actionable tasks based on the user's goal. Respond ONLY with a valid JSON object containing a single key "tasks" which holds an array of task objects. Each task object must have the following keys: 'content' (string, the task description), 'phase' (string, e.g., 'Phase 1', 'Phase 2', 'Phase 3'), and 'priority' (string, e.g., 'High', 'Medium', 'Low'). Do not include any other text, explanations, markdown formatting, or code block fences before or after the JSON object. Example format: {"tasks": [{"content": "Task 1", "phase": "Phase X", "priority": "Medium"}]}`;
-    const userPrompt = `User Goal: ${goal}. Generate the tasks in the specified JSON format.`;
+    const systemPrompt = `You are an assistant helping plan AI implementation for marketing agencies. Generate 3-5 actionable tasks based on the user's goal. Respond ONLY with a valid JSON object containing a single key "tasks" which holds an array of task objects. Each task object must have the following keys: 'content' (string, the task description), 'phase' (string, e.g., 'To Do', 'In Progress', 'Done' based on the Task Management pipeline stages), and 'priority' (string, e.g., 'High', 'Medium', 'Low'). Do not include any other text, explanations, markdown formatting, or code block fences before or after the JSON object. Example format: {"tasks": [{"content": "Task 1", "phase": "To Do", "priority": "Medium"}]}`;
+    const userPrompt = `User Goal: ${goal}. Generate the tasks for the Task Management pipeline in the specified JSON format.`;
+
 
     try {
       console.log("Sending AI Task Generation Request...");
@@ -247,32 +380,56 @@ export default function KanbanSection() {
         throw new Error("AI response structure is incorrect (missing 'tasks' array).");
       }
 
-      // Validate individual tasks (basic check)
-      const validTasks = generatedTasks.filter(task =>
-        task && // Check if task object exists
-        typeof task.content === 'string' && task.content.trim() !== '' &&
-        typeof task.phase === 'string' && task.phase.trim() !== '' &&
-        typeof task.priority === 'string' && task.priority.trim() !== ''
-      );
+      // Validate individual tasks and assign to active pipeline/stage
+      const newTasksWithIds = generatedTasks
+        .filter(task =>
+          task &&
+          typeof task.content === 'string' && task.content.trim() !== '' &&
+          typeof task.phase === 'string' && activePipeline?.stages.includes(task.phase) && // Validate phase against active pipeline stages
+          typeof task.priority === 'string' && task.priority.trim() !== ''
+        )
+        .map(task => ({
+          ...task,
+          id: uuidv4(),
+          pipelineId: activePipelineId, // Assign to the active pipeline
+        }));
 
-      if (validTasks.length === 0) {
-        console.warn("No valid tasks found in AI response:", generatedTasks);
-        throw new Error("AI generated response, but no valid tasks found.");
+      if (newTasksWithIds.length === 0) {
+        console.warn("No valid tasks found in AI response or phases did not match active pipeline stages:", generatedTasks);
+         // Provide feedback if stages didn't match
+         const aiPhases = generatedTasks.map((task: any) => task.phase).filter((phase: string) => typeof phase === 'string').join(', ');
+         const expectedStages = activePipeline?.stages.join(', ');
+         throw new Error(`AI generated tasks, but phases didn't match the '${activePipeline?.name}' pipeline stages. AI phases: [${aiPhases}]. Expected stages: [${expectedStages}].`);
       }
 
-      const newTasksWithIds = validTasks.map(task => ({
-        ...task,
-        id: uuidv4(), // Assign unique ID
-      }));
 
       console.log("Adding new tasks:", newTasksWithIds);
-      setTasks(prevTasks => ({
-        ...prevTasks,
-        todo: [...newTasksWithIds, ...prevTasks.todo], // Add to 'To Do' column
-      }));
+      setTasks(prevTasks => {
+        const updatedPipelineTasks = { ...prevTasks[activePipelineId] };
+        newTasksWithIds.forEach(task => {
+          if (updatedPipelineTasks[task.phase]) {
+            updatedPipelineTasks[task.phase] = [task, ...updatedPipelineTasks[task.phase]];
+          } else {
+             // Fallback if AI provided a phase not in the current pipeline stages (should be caught by validation filter)
+            console.warn(`AI generated task with phase "${task.phase}" not in active pipeline stages. Adding to first stage.`);
+             const firstStage = activePipeline?.stages[0];
+             if (firstStage) {
+                updatedPipelineTasks[firstStage] = [{...task, phase: firstStage}, ...updatedPipelineTasks[firstStage]];
+             } else {
+                console.error("Active pipeline has no stages to add task to.");
+             }
+          }
+        });
+
+        return {
+          ...prevTasks,
+          [activePipelineId]: updatedPipelineTasks,
+        };
+      });
+
 
       setAiGoalInput(''); // Clear input on success
-      toast({ title: "Success!", description: `${newTasksWithIds.length} tasks generated and added to 'To Do'.` });
+      toast({ title: "Success!", description: `${newTasksWithIds.length} tasks generated and added to '${activePipeline?.name}'.` });
 
     } catch (error) {
       console.error("Error in handleGenerateTasks:", error);
@@ -286,26 +443,72 @@ export default function KanbanSection() {
     }
   };
 
+
+  // Filter tasks for the active pipeline
+  const tasksForActivePipeline = useMemo(() => {
+     return tasks[activePipelineId] || {};
+  }, [tasks, activePipelineId]);
+
+
+  if (!activePipeline) {
+    return <div className="text-white">Loading pipeline...</div>; // Or handle error
+  }
+
   return (
     <div className="space-y-8 text-white max-w-7xl mx-auto">
+      {/* Page Title */}
       <div className="space-y-4">
         <h1 className="text-3xl font-bold">Kanban Task View</h1>
-        <h2 className="text-xl font-semibold text-gray-400">Manage Implementation Tasks</h2>
+        <h2 className="text-xl font-semibold text-gray-400">Manage Implementation Tasks Across Pipelines</h2> {/* Updated subtitle */}
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2 mb-6">
-        <Input
-          type="text"
-          placeholder="Enter goal for AI tasks (e.g., Phase 2 deployment)"
-          value={aiGoalInput}
-          onChange={(e) => setAiGoalInput(e.target.value)}
-          disabled={isGeneratingTasks}
-          className="flex-grow bg-[#111111] border-gray-400 placeholder:text-gray-400 text-white"
-        />
-        <Button onClick={handleGenerateTasks} disabled={isGeneratingTasks} className="w-full sm:w-auto">
-          {isGeneratingTasks ? "Generating..." : "Generate Tasks with AI"}
-        </Button>
+      {/* Pipeline Selection and Creation */}
+      <div className="flex items-center gap-6 mb-6"> {/* Generous gap */}
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400 font-semibold">Pipeline:</span>
+          <Select value={activePipelineId} onValueChange={setActivePipelineId}>
+            <SelectTrigger className="w-[240px] bg-[#111111] border border-[#333333] text-white rounded-none focus:ring-offset-[#000000]"> {/* Styled Select Trigger */}
+              <SelectValue placeholder="Select a pipeline" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#0a0a0a] border border-[#333333] text-white rounded-none"> {/* Styled Select Content */}
+              {pipelines.map(pipeline => (
+                <SelectItem
+                  key={pipeline.id}
+                  value={pipeline.id}
+                  className="focus:bg-[#333333] focus:text-white" // Styled Select Item on focus
+                >
+                  {pipeline.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+         <Button
+            onClick={() => setIsCustomizationModalOpen(true)}
+            className="bg-white text-black font-semibold hover:bg-gray-200 transition-colors duration-150 rounded-none" // Styled Button
+          >
+            Create New Pipeline
+          </Button>
       </div>
+
+
+       {/* AI Task Generation Input (Only for Task Management Pipeline) */}
+       {activePipelineId === 'tasks-pipeline' && (
+          <div className="flex flex-col sm:flex-row gap-2 mb-6">
+            <Input
+              type="text"
+              placeholder="Enter goal for AI tasks (e.g., Phase 2 deployment)"
+              value={aiGoalInput}
+              onChange={(e) => setAiGoalInput(e.target.value)}
+              disabled={isGeneratingTasks}
+              className="flex-grow bg-[#111111] border-gray-400 placeholder:text-gray-400 text-white rounded-none" // Styled Input
+            />
+            <Button onClick={handleGenerateTasks} disabled={isGeneratingTasks} className="w-full sm:w-auto bg-white text-black font-semibold hover:bg-gray-200 transition-colors duration-150 rounded-none"> {/* Styled Button */}
+              {isGeneratingTasks ? "Generating..." : "Generate Tasks with AI"}
+            </Button>
+          </div>
+       )}
+
 
       <DndContext
         sensors={sensors}
@@ -314,17 +517,32 @@ export default function KanbanSection() {
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {Object.entries(tasks).map(([columnId, columnTasks]) => (
-            <KanbanColumn
-              key={columnId}
-              id={columnId}
-              title={columnTitles[columnId as keyof typeof columnTitles]}
-              tasks={columnTasks}
-            />
-          ))}
-        </div>
-      </DndContext>
-    </div>
-  );
-} 
+        <div className="grid grid-cols-1 md:grid-flow-col md:auto-cols-fr gap-6"> {/* Use a dynamic grid template based on active pipeline stages */}
+           {activePipeline.stages.map((stage) => (
+             <KanbanColumn
+               key={stage} // Use stage name as key
+               id={stage} // Use stage name as id for DND context
+               title={stage} // Use stage name as title
+               tasks={tasksForActivePipeline[stage] || []} // Pass tasks for this stage
+               onCardClick={handleCardClick}
+             />
+           ))}
+         </div>
+       </DndContext>
+
+       {/* Render the Task Detail Modal */}
+       <KanbanTaskDetailModal
+         task={selectedTask}
+         isOpen={isDetailModalOpen} // Use isDetailModalOpen
+         onClose={handleCloseDetailModal} // Use handleCloseDetailModal
+       />
+
+       {/* Render the Pipeline Customization Modal */}
+       <PipelineCustomizationModal
+         isOpen={isCustomizationModalOpen}
+         onClose={handleCloseCustomizationModal}
+         onSave={handleSaveNewPipeline}
+       />
+     </div>
+   );
+ }

@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pollinations.AI API Tester</title>
+    <style>
+        :root {
+            --primary: #0066ff;
+            --secondary: #111827;
+            --background: #ffffff;
+            --card-bg: #f8f9fa;
+            --text: #333333;
+            --border: #dddddd;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background-color: var(--background);
+            padding: 20px;
+        }
+        
+        h1, h2, h3 {
+            margin-bottom: 15px;
+            color: var(--secondary);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--primary);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            background-color: transparent;
+            font-weight: 500;
+        }
+        
+        .tab.active {
+            background-color: var(--card-bg);
+            border-color: var(--border);
+            border-bottom-color: var(--card-bg);
+            margin-bottom: -1px;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 20px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 0 0 5px 5px;
+            margin-bottom: 30px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        input[type="text"], 
+        input[type="number"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: #0055cc;
+        }
+        
+        .result-container {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background-color: white;
+        }
+        
+        .image-result {
+            max-width: 100%;
+            margin-top: 10px;
+        }
+        
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        
+        .model-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .model-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background-color: white;
+        }
+        
+        .model-table th, .model-table td {
+            padding: 10px;
+            border: 1px solid var(--border);
+            text-align: left;
+        }
+        
+        .model-table th {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .model-table tr:nth-child(even) {
+            background-color: var(--card-bg);
+        }
+        
+        .model-item {
+            padding: 10px;
+            background-color: white;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+        
+        .feed-container {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            padding: 10px;
+            background-color: white;
+            margin-top: 15px;
+        }
+        
+        .feed-item {
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 10px;
+        }
+        
+        .feed-item img {
+            max-width: 100%;
+            max-height: 200px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .loading {
+            display: inline-block;
+            margin-left: 10px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pollinations.AI API Tester</h1>
+        
+        <div class="tabs">
+            <button class="tab active" data-tab="image">Image Generation</button>
+            <button class="tab" data-tab="text">Text Generation</button>
+            <button class="tab" data-tab="audio">Text-to-Speech</button>
+            <button class="tab" data-tab="models">Available Models</button>
+            <button class="tab" data-tab="feeds">Real-time Feeds</button>
+        </div>
+        
+        <!-- Image Generation Tab -->
+        <div id="image-tab" class="tab-content active">
+            <h2>Generate Images 🖼️</h2>
+            <div class="form-group">
+                <label for="image-prompt">Prompt:</label>
+                <textarea id="image-prompt" placeholder="A beautiful sunset over the ocean"></textarea>
+            </div>
+            <div class="grid">
+                <div class="form-group">
+                    <label for="image-model">Model:</label>
+                    <select id="image-model">
+                        <option value="flux">flux (default)</option>
+                        <!-- Will be populated from API -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="image-seed">Seed (optional):</label>
+                    <input type="number" id="image-seed" placeholder="Random seed">
+                </div>
+                <div class="form-group">
+                    <label for="image-width">Width:</label>
+                    <input type="number" id="image-width" value="1024">
+                </div>
+                <div class="form-group">
+                    <label for="image-height">Height:</label>
+                    <input type="number" id="image-height" value="1024">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Options:</label>
+                <div>
+                    <input type="checkbox" id="image-nologo">
+                    <label for="image-nologo">No Logo</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="image-enhance">
+                    <label for="image-enhance">Enhance Prompt</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="image-private">
+                    <label for="image-private">Private</label>
+                </div>
+            </div>
+            <button id="generate-image">Generate Image</button>
+            <div id="image-result" class="result-container" style="display: none;">
+                <h3>Result:</h3>
+                <div id="image-url"></div>
+                <img id="generated-image" class="image-result">
+            </div>
+        </div>
+        
+        <!-- Text Generation Tab -->
+        <div id="text-tab" class="tab-content">
+            <h2>Generate Text 📝</h2>
+            <div class="form-group">
+                <label for="text-prompt">Prompt:</label>
+                <textarea id="text-prompt" placeholder="What is the capital of France?"></textarea>
+            </div>
+            <div class="grid">
+                <div class="form-group">
+                    <label for="text-model">Model:</label>
+                    <select id="text-model">
+                        <option value="openai">openai (default)</option>
+                        <!-- Will be populated from API -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="text-seed">Seed (optional):</label>
+                    <input type="number" id="text-seed" placeholder="Random seed">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="text-system">System Prompt (optional):</label>
+                <textarea id="text-system" placeholder="You are a helpful assistant."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Options:</label>
+                <div>
+                    <input type="checkbox" id="text-json">
+                    <label for="text-json">JSON Response</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="text-stream">
+                    <label for="text-stream">Stream Response</label>
+                </div>
+                <div>
+                    <input type="checkbox" id="text-private">
+                    <label for="text-private">Private</label>
+                </div>
+            </div>
+            <button id="generate-text">Generate Text</button>
+            <div id="text-result" class="result-container" style="display: none;">
+                <h3>Result:</h3>
+                <pre id="generated-text"></pre>
+            </div>
+        </div>
+        
+        <!-- Text-to-Speech Tab -->
+        <div id="audio-tab" class="tab-content">
+            <h2>Text-to-Speech 🔊</h2>
+            <div class="form-group">
+                <label for="tts-text">Text to Synthesize:</label>
+                <textarea id="tts-text" placeholder="Hello, this is a test of the text to speech functionality."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="tts-voice">Voice:</label>
+                <select id="tts-voice">
+                    <option value="alloy">alloy (default)</option>
+                    <!-- Will be populated from API -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Method:</label>
+                <div>
+                    <input type="radio" id="tts-method-get" name="tts-method" value="get" checked>
+                    <label for="tts-method-get">GET (for short text)</label>
+                </div>
+                <div>
+                    <input type="radio" id="tts-method-post" name="tts-method" value="post">
+                    <label for="tts-method-post">POST (for longer text)</label>
+                </div>
+            </div>
+            <button id="generate-speech">Generate Speech</button>
+            <div id="audio-result" class="result-container" style="display: none;">
+                <h3>Result:</h3>
+                <audio id="generated-audio" controls></audio>
+                <div>
+                    <button id="download-audio">Download Audio</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Available Models Tab -->
+        <div id="models-tab" class="tab-content">
+            <h2>Available Models 📋</h2>
+            <div class="grid">
+                <div>
+                    <h3>Image Models</h3>
+                    <button id="list-image-models">List Image Models</button>
+                    <div id="image-models-list" class="model-list"></div>
+                </div>
+                <div>
+                    <h3>Text Models</h3>
+                    <button id="list-text-models">List Text Models</button>
+                    <div id="text-models-list" class="model-list"></div>
+                </div>
+            </div>
+            <div style="margin-top: 30px;">
+                <h3>All Models Overview</h3>
+                <button id="show-all-models">Show All Models in Table Format</button>
+                <div id="all-models-table"></div>
+            </div>
+        </div>
+        
+        <!-- Real-time Feeds Tab -->
+        <div id="feeds-tab" class="tab-content">
+            <h2>Real-time Feeds 📡</h2>
+            <div class="grid">
+                <div>
+                    <h3>Image Feed</h3>
+                    <button id="connect-image-feed">Connect to Image Feed</button>
+                    <button id="disconnect-image-feed" disabled>Disconnect</button>
+                    <div id="image-feed" class="feed-container"></div>
+                </div>
+                <div>
+                    <h3>Text Feed</h3>
+                    <button id="connect-text-feed">Connect to Text Feed</button>
+                    <button id="disconnect-text-feed" disabled>Disconnect</button>
+                    <div id="text-feed" class="feed-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
+            });
+        });
+        
+        // Load models when the page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchImageModels();
+            fetchTextModels();
+        });
+        
+        // Image Generation
+        document.getElementById('generate-image').addEventListener('click', generateImage);
+        
+        async function generateImage() {
+            const prompt = document.getElementById('image-prompt').value.trim();
+            if (!prompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+            
+            const model = document.getElementById('image-model').value;
+            const seed = document.getElementById('image-seed').value;
+            const width = document.getElementById('image-width').value;
+            const height = document.getElementById('image-height').value;
+            const nologo = document.getElementById('image-nologo').checked;
+            const enhance = document.getElementById('image-enhance').checked;
+            const isPrivate = document.getElementById('image-private').checked;
+            
+            // Build URL
+            let url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?`;
+            const params = new URLSearchParams();
+            
+            if (model && model !== 'flux') params.append('model', model);
+            if (seed) params.append('seed', seed);
+            if (width) params.append('width', width);
+            if (height) params.append('height', height);
+            if (nologo) params.append('nologo', 'true');
+            if (enhance) params.append('enhance', 'true');
+            if (isPrivate) params.append('private', 'true');
+            
+            url += params.toString();
+            
+            // Show loading
+            const button = document.getElementById('generate-image');
+            const originalText = button.textContent;
+            button.innerHTML = 'Generating... <span class="loading">⟳</span>';
+            button.disabled = true;
+            
+            try {
+                // Display the image
+                document.getElementById('image-url').textContent = url;
+                const imgElement = document.getElementById('generated-image');
+                imgElement.src = url;
+                
+                imgElement.onload = () => {
+                    document.getElementById('image-result').style.display = 'block';
+                    button.textContent = originalText;
+                    button.disabled = false;
+                };
+                
+                imgElement.onerror = () => {
+                    alert('Error generating image. Check your parameters and try again.');
+                    button.textContent = originalText;
+                    button.disabled = false;
+                };
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error generating image: ' + error.message);
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+        
+        // Text Generation
+        document.getElementById('generate-text').addEventListener('click', generateText);
+        
+        async function generateText() {
+            const prompt = document.getElementById('text-prompt').value.trim();
+            if (!prompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+            
+            const model = document.getElementById('text-model').value;
+            const seed = document.getElementById('text-seed').value;
+            const systemPrompt = document.getElementById('text-system').value;
+            const jsonResponse = document.getElementById('text-json').checked;
+            const streamResponse = document.getElementById('text-stream').checked;
+            const isPrivate = document.getElementById('text-private').checked;
+            
+            // Build URL
+            let url = `https://text.pollinations.ai/${encodeURIComponent(prompt)}?`;
+            const params = new URLSearchParams();
+            
+            if (model && model !== 'openai') params.append('model', model);
+            if (seed) params.append('seed', seed);
+            if (systemPrompt) params.append('system', encodeURIComponent(systemPrompt));
+            if (jsonResponse) params.append('json', 'true');
+            if (streamResponse) params.append('stream', 'true');
+            if (isPrivate) params.append('private', 'true');
+            
+            url += params.toString();
+            
+            // Show loading
+            const button = document.getElementById('generate-text');
+            const originalText = button.textContent;
+            button.innerHTML = 'Generating... <span class="loading">⟳</span>';
+            button.disabled = true;
+            
+            // Display result element
+            const resultElement = document.getElementById('text-result');
+            resultElement.style.display = 'block';
+            const textElement = document.getElementById('generated-text');
+            textElement.textContent = 'Loading...';
+            
+            try {
+                if (streamResponse) {
+                    // Handle streaming response
+                    const eventSource = new EventSource(url);
+                    textElement.textContent = '';
+                    
+                    eventSource.onmessage = (event) => {
+                        textElement.textContent += event.data;
+                    };
+                    
+                    eventSource.onerror = () => {
+                        eventSource.close();
+                        button.textContent = originalText;
+                        button.disabled = false;
+                    };
+                    
+                    eventSource.addEventListener('done', () => {
+                        eventSource.close();
+                        button.textContent = originalText;
+                        button.disabled = false;
+                    });
+                } else {
+                    // Regular request
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const text = await response.text();
+                    textElement.textContent = text;
+                    
+                    button.textContent = originalText;
+                    button.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                textElement.textContent = 'Error: ' + error.message;
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+        
+        // Text-to-Speech
+        document.getElementById('generate-speech').addEventListener('click', generateSpeech);
+        
+        async function generateSpeech() {
+            const text = document.getElementById('tts-text').value.trim();
+            if (!text) {
+                alert('Please enter text to synthesize');
+                return;
+            }
+            
+            const voice = document.getElementById('tts-voice').value;
+            const method = document.querySelector('input[name="tts-method"]:checked').value;
+            
+            // Show loading
+            const button = document.getElementById('generate-speech');
+            const originalText = button.textContent;
+            button.innerHTML = 'Generating... <span class="loading">⟳</span>';
+            button.disabled = true;
+            
+            try {
+                let audioBlob;
+                
+                if (method === 'get') {
+                    // GET method
+                    const url = `https://text.pollinations.ai/${encodeURIComponent(text)}?model=openai-audio&voice=${voice}`;
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    audioBlob = await response.blob();
+                } else {
+                    // POST method
+                    const url = 'https://text.pollinations.ai/openai';
+                    const payload = {
+                        model: 'openai-audio',
+                        messages: [
+                            { role: 'user', content: text }
+                        ],
+                        voice: voice
+                    };
+                    
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    audioBlob = await response.blob();
+                }
+                
+                // Create audio URL and play
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audioElement = document.getElementById('generated-audio');
+                audioElement.src = audioUrl;
+                
+                // Show result and enable download
+                document.getElementById('audio-result').style.display = 'block';
+                
+                document.getElementById('download-audio').onclick = () => {
+                    const a = document.createElement('a');
+                    a.href = audioUrl;
+                    a.download = 'pollinations-tts.mp3';
+                    a.click();
+                };
+                
+                button.textContent = originalText;
+                button.disabled = false;
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error generating speech: ' + error.message);
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+        
+        // Model Listing
+        async function fetchImageModels() {
+            try {
+                const response = await fetch('https://image.pollinations.ai/models');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const models = await response.json();
+                
+                // Populate model dropdown
+                const selectElement = document.getElementById('image-model');
+                selectElement.innerHTML = '';
+                
+                // Add default option
+                const defaultOption = document.createElement('option');
+                defaultOption.value = 'flux';
+                defaultOption.textContent = 'flux (default)';
+                selectElement.appendChild(defaultOption);
+                
+                // Add other models
+                models.forEach(model => {
+                    if (model === 'flux') return; // Skip default
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    selectElement.appendChild(option);
+                });
+                
+                // Save for later listing
+                window.imageModels = models;
+            } catch (error) {
+                console.error('Error fetching image models:', error);
+            }
+        }
+        
+        async function fetchTextModels() {
+            try {
+                const response = await fetch('https://text.pollinations.ai/models');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const modelsData = await response.json();
+                
+                // Populate text model dropdown
+                const textSelectElement = document.getElementById('text-model');
+                textSelectElement.innerHTML = '';
+                
+                // Add default option
+                const defaultOption = document.createElement('option');
+                defaultOption.value = 'openai';
+                defaultOption.textContent = 'openai (default)';
+                textSelectElement.appendChild(defaultOption);
+                
+                // Extract model IDs from potential complex structure
+                let textModels = [];
+                if (Array.isArray(modelsData)) {
+                    textModels = modelsData;
+                } else if (typeof modelsData === 'object') {
+                    textModels = Object.keys(modelsData);
+                }
+                
+                // Add other models
+                textModels.forEach(model => {
+                    if (model === 'openai') return; // Skip default
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    textSelectElement.appendChild(option);
+                });
+                
+                // Populate TTS voices if available
+                const voicesSelectElement = document.getElementById('tts-voice');
+                voicesSelectElement.innerHTML = '';
+                
+                // Default voices in case API doesn't provide them
+                const defaultVoices = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
+                
+                // Try to extract voices from model data
+                let voices = defaultVoices;
+                if (modelsData['openai-audio'] && modelsData['openai-audio'].voices) {
+                    voices = modelsData['openai-audio'].voices;
+                }
+                
+                voices.forEach((voice, index) => {
+                    const option = document.createElement('option');
+                    option.value = voice;
+                    option.textContent = voice + (index === 0 ? ' (default)' : '');
+                    voicesSelectElement.appendChild(option);
+                });
+                
+                // Save for later listing
+                window.textModels = modelsData;
+            } catch (error) {
+                console.error('Error fetching text models:', error);
+            }
+        }
+        
+        // List models button handlers
+        document.getElementById('list-image-models').addEventListener('click', displayImageModels);
+        document.getElementById('list-text-models').addEventListener('click', displayTextModels);
+        
+        function displayImageModels() {
+            const container = document.getElementById('image-models-list');
+            container.innerHTML = '';
+            
+            if (!window.imageModels) {
+                fetchImageModels().then(() => {
+                    displayImageModels();
+                });
+                return;
+            }
+            
+            window.imageModels.forEach(model => {
+                const div = document.createElement('div');
+                div.className = 'model-item';
+                div.textContent = model;
+                container.appendChild(div);
+            });
+        }
+        
+        function displayTextModels() {
+            const container = document.getElementById('text-models-list');
+            container.innerHTML = '';
+            
+            if (!window.textModels) {
+                fetchTextModels().then(() => {
+                    displayTextModels();
+                });
+                return;
+            }
+            
+            // Handle different possible formats of the text models data
+            if (Array.isArray(window.textModels)) {
+                window.textModels.forEach(model => {
+                    const div = document.createElement('div');
+                    div.className = 'model-item';
+                    div.textContent = model;
+                    container.appendChild(div);
+                });
+            } else if (typeof window.textModels === 'object') {
+                // Handle object format with potential nested details
+                Object.entries(window.textModels).forEach(([modelId, details]) => {
+                    const div = document.createElement('div');
+                    div.className = 'model-item';
+                    
+                    let detailsText = '';
+                    if (typeof details === 'object') {
+                        if (details.voices) {
+                            detailsText = `<br><small>Voices: ${details.voices.join(', ')}</small>`;
+                        }
+                    }
+                    
+                    div.innerHTML = `<strong>${modelId}</strong>${detailsText}`;
+                    container.appendChild(div);
+                });
+            }
+        }
+        
+        // Feed connection handlers
+        let imageEventSource = null;
+        let textEventSource = null;
+        
+        document.getElementById('connect-image-feed').addEventListener('click', connectImageFeed);
+        document.getElementById('disconnect-image-feed').addEventListener('click', disconnectImageFeed);
+        document.getElementById('connect-text-feed').addEventListener('click', connectTextFeed);
+        document.getElementById('disconnect-text-feed').addEventListener('click', disconnectTextFeed);
+        
+        function connectImageFeed() {
+            const feedContainer = document.getElementById('image-feed');
+            feedContainer.innerHTML = '<div>Connecting to feed...</div>';
+            
+            try {
+                imageEventSource = new EventSource('https://image.pollinations.ai/feed');
+                
+                imageEventSource.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        const item = document.createElement('div');
+                        item.className = 'feed-item';
+                        
+                        let html = `<p><strong>Prompt:</strong> ${data.prompt || 'N/A'}</p>`;
+                        html += `<p><strong>Model:</strong> ${data.model || 'N/A'}, <strong>Seed:</strong> ${data.seed || 'N/A'}</p>`;
+                        
+                        if (data.imageURL) {
+                            html += `<img src="${data.imageURL}" alt="${data.prompt || 'Generated image'}">`;
+                        }
+                        
+                        item.innerHTML = html;
+                        feedContainer.prepend(item);
+                        
+                        // Limit items
+                        if (feedContainer.children.length > 20) {
+                            feedContainer.removeChild(feedContainer.lastChild);
+                        }
+                    } catch (error) {
+                        console.error('Error parsing image feed data:', error);
+                    }
+                };
+                
+                imageEventSource.onerror = function() {
+                    feedContainer.innerHTML = '<div>Error connecting to feed. Try again.</div>';
+                    disconnectImageFeed();
+                };
+                
+                document.getElementById('connect-image-feed').disabled = true;
+                document.getElementById('disconnect-image-feed').disabled = false;
+            } catch (error) {
+                console.error('Error connecting to image feed:', error);
+                feedContainer.innerHTML = '<div>Error connecting to feed: ' + error.message + '</div>';
+            }
+        }
+        
+        function disconnectImageFeed() {
+            if (imageEventSource) {
+                imageEventSource.close();
+                imageEventSource = null;
+            }
+            
+            document.getElementById('connect-image-feed').disabled = false;
+            document.getElementById('disconnect-image-feed').disabled = true;
+        }
+        
+        function connectTextFeed() {
+            const feedContainer = document.getElementById('text-feed');
+            feedContainer.innerHTML = '<div>Connecting to feed...</div>';
+            
+            try {
+                textEventSource = new EventSource('https://text.pollinations.ai/feed');
+                
+                textEventSource.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        const item = document.createElement('div');
+                        item.className = 'feed-item';
+                        
+                        let html = `<p><strong>Model:</strong> ${data.model || 'N/A'}</p>`;
+                        
+                        if (data.response) {
+                            // Truncate long responses
+                            let responseText = data.response;
+                            if (responseText.length > 300) {
+                                responseText = responseText.substring(0, 300) + '...';
+                            }
+                            html += `<p>${responseText}</p>`;
+                        }
+                        
+                        // Add user query if available
+                        if (data.messages && data.messages.length > 0) {
+                            const userMessage = data.messages.find(m => m.role === 'user');
+                            if (userMessage) {
+                                html += `<p><small><strong>Query:</strong> "${userMessage.content}"</small></p>`;
+                            }
+                        }
+                        
+                        item.innerHTML = html;
+                        feedContainer.prepend(item);
+                        
+                        // Limit items
+                        if (feedContainer.children.length > 20) {
+                            feedContainer.removeChild(feedContainer.lastChild);
+                        }
+                    } catch (error) {
+                        console.error('Error parsing text feed data:', error);
+                    }
+                };
+                
+                textEventSource.onerror = function() {
+                    feedContainer.innerHTML = '<div>Error connecting to feed. Try again.</div>';
+                    disconnectTextFeed();
+                };
+                
+                document.getElementById('connect-text-feed').disabled = true;
+                document.getElementById('disconnect-text-feed').disabled = false;
+            } catch (error) {
+                console.error('Error connecting to text feed:', error);
+                feedContainer.innerHTML = '<div>Error connecting to feed: ' + error.message + '</div>';
+            }
+        }
+        
+        function disconnectTextFeed() {
+            if (textEventSource) {
+                textEventSource.close();
+                textEventSource = null;
+            }
+            
+            document.getElementById('connect-text-feed').disabled = false;
+            document.getElementById('disconnect-text-feed').disabled = true;
+        }
+
+        // Add new function for showing all models in table format
+        document.getElementById('show-all-models').addEventListener('click', displayAllModelsTable);
+
+        function displayAllModelsTable() {
+            const container = document.getElementById('all-models-table');
+            container.innerHTML = '<div>Loading models...</div>';
+
+            // Ensure we have both image and text models
+            Promise.all([
+                window.imageModels ? Promise.resolve() : fetchImageModels(),
+                window.textModels ? Promise.resolve() : fetchTextModels()
+            ]).then(() => {
+                let tableHTML = `
+                    <table class="model-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Model Name</th>
+                                <th>Details</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                // Add image models
+                if (window.imageModels) {
+                    window.imageModels.forEach(model => {
+                        tableHTML += `
+                            <tr>
+                                <td>Image</td>
+                                <td>${model}</td>
+                                <td>Image generation model</td>
+                                <td>${model === 'flux' ? '✓' : ''}</td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                // Add text models
+                if (window.textModels) {
+                    if (Array.isArray(window.textModels)) {
+                        window.textModels.forEach(model => {
+                            tableHTML += `
+                                <tr>
+                                    <td>Text</td>
+                                    <td>${model}</td>
+                                    <td>Text generation model</td>
+                                    <td>${model === 'openai' ? '✓' : ''}</td>
+                                </tr>
+                            `;
+                        });
+                    } else if (typeof window.textModels === 'object') {
+                        Object.entries(window.textModels).forEach(([modelId, details]) => {
+                            let modelDetails = 'Text generation model';
+                            if (typeof details === 'object' && details.voices) {
+                                modelDetails = `Supports voices: ${details.voices.join(', ')}`;
+                            }
+                            tableHTML += `
+                                <tr>
+                                    <td>Text</td>
+                                    <td>${modelId}</td>
+                                    <td>${modelDetails}</td>
+                                    <td>${modelId === 'openai' ? '✓' : ''}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                }
+
+                tableHTML += `
+                        </tbody>
+                    </table>
+                `;
+
+                container.innerHTML = tableHTML;
+            }).catch(error => {
+                console.error('Error loading models:', error);
+                container.innerHTML = '<div>Error loading models. Please try again.</div>';
+            });
+        }
+    </script>
+</body>
+</html> 

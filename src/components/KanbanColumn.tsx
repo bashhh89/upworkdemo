@@ -14,16 +14,17 @@ interface KanbanColumnProps {
   id: string;
   title: string;
   tasks: Task[];
+  onCardClick: (task: Task) => void; // Added onCardClick to props
 }
 
-export function KanbanColumn({ id, title, tasks }: KanbanColumnProps) {
+export function KanbanColumn({ id, title, tasks, onCardClick }: KanbanColumnProps) { // Destructured onCardClick
   return (
     <div className="flex flex-col flex-1 min-h-[200px] bg-[#0a0a0a] p-4 rounded-lg border border-[#333333]">
       <h3 className="font-semibold mb-4 text-white">{title}</h3>
       <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
         <div className="flex-grow space-y-3">
           {tasks.map((task) => (
-            <KanbanTaskCard key={task.id} task={task} />
+            <KanbanTaskCard key={task.id} task={task} onCardClick={onCardClick} />
           ))}
           {tasks.length === 0 && (
             <div className="text-center text-gray-400 text-sm py-4">Drop tasks here</div>

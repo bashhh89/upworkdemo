@@ -123,3 +123,160 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Assistant UI Dark Mode Overrides */
+:is(.thread, .thread-list, .thread-container, .thread-input) {
+  background-color: #0a0a0a !important;
+  color: white !important;
+  border-color: #333333 !important;
+}
+
+.thread-message-assistant {
+  background-color: #111111 !important;
+  color: white !important;
+  border: 1px solid #333333 !important;
+}
+
+.thread-message-user {
+  background-color: #0a0a0a !important;
+  color: white !important;
+  border: 1px solid #333333 !important;
+}
+
+.thread-input textarea, 
+.thread-input input {
+  background-color: #111111 !important;
+  color: white !important;
+  border-color: #333333 !important;
+}
+
+.thread-input textarea::placeholder,
+.thread-input input::placeholder {
+  color: #666666 !important;
+}
+
+/* Make all SVG icons white */
+:is(.thread, .thread-list, .thread-container, .thread-input) svg {
+  color: white !important;
+}
+
+/* Style buttons in chat */
+:is(.thread, .thread-list, .thread-container, .thread-input) button {
+  background-color: #0a0a0a !important;
+  color: white !important;
+}
+
+:is(.thread, .thread-list, .thread-container, .thread-input) button:hover {
+  background-color: #111111 !important;
+}
+
+/* Style thread list items */
+.thread-list-item {
+  border-color: #333333 !important;
+  color: white !important;
+}
+
+.thread-list-item:hover,
+.thread-list-item-active {
+  background-color: #111111 !important;
+}
+
+/* Override default white background */
+body {
+  background-color: #000000;
+  color: white;
+}
+
+/* Prose (Markdown) styles for chat */
+.prose {
+  max-width: 100%;
+  color: white;
+}
+
+.prose a {
+  color: #3b82f6 !important;
+  text-decoration: underline;
+}
+
+.prose p {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+.prose ul {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  list-style-type: disc;
+  padding-left: 1.5em;
+}
+
+.prose ol {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  list-style-type: decimal;
+  padding-left: 1.5em;
+}
+
+.prose li {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  color: white;
+  font-weight: 600;
+  line-height: 1.25;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.prose h1 {
+  font-size: 1.875rem;
+}
+
+.prose h2 {
+  font-size: 1.5rem;
+}
+
+.prose h3 {
+  font-size: 1.25rem;
+}
+
+.prose hr {
+  border-color: #333333;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+.prose blockquote {
+  border-left: 3px solid #333333;
+  padding-left: 1em;
+  font-style: italic;
+  margin: 1em 0;
+}
+
+.prose code {
+  background-color: #111111;
+  border-radius: 3px;
+  padding: 0.2em 0.4em;
+  font-family: monospace;
+}
+
+.prose pre {
+  background-color: #111111;
+  border-radius: 3px;
+  padding: 1em;
+  overflow-x: auto;
+  margin: 1em 0;
+  font-family: monospace;
+}
+
+/* Ensure the first element in markdown has no top margin */
+.prose > :first-child {
+  margin-top: 0;
+}
+
+/* Ensure the last element in markdown has no bottom margin */
+.prose > :last-child {
+  margin-bottom: 0;
+}
