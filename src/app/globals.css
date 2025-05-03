@@ -280,3 +280,19 @@ body {
 .prose > :last-child {
   margin-bottom: 0;
 }
+
+/* Hide scrollbar but maintain functionality */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* For Chrome, Safari and Opera */
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* For Internet Explorer and Edge */
+  scrollbar-width: none;  /* For Firefox */
+}
+
+/* Debug styles for slash command menu to make it more visible */
+[data-slash-menu="true"] {
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5) !important;
+  border: 1px solid rgba(59, 130, 246, 0.5) !important;
+}

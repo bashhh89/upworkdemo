@@ -10,7 +10,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useState, useEffect } from 'react';
-import { useAssistantRuntime, useThreadList } from '@assistant-ui/react'; // Fixed import name
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select components
 import { Button } from "@/components/ui/button"; // Import Button component
 import { PollinationsModels, TextModel } from '@/lib/pollinations-api'; // Import Pollinations types
@@ -186,24 +185,24 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   
-  // Get runtime and thread store from assistant-ui, but handle cases when they're not available
+  // Replace the useAssistantRuntime and useThreadList implementation
   const [runtimeAvailable, setRuntimeAvailable] = useState(false);
-  let runtime: any = null;
-  let threadStore: any = null;
+  // Mock runtime and threadStore with empty objects that have required methods
+  const runtime = {
+    updateConfig: (config: any) => console.log('Mock: updateConfig called with', config),
+    setConfig: (config: any) => console.log('Mock: setConfig called with', config)
+  };
   
-  try {
-    // Try to use the hooks, but catch errors if they're not in context
-    runtime = useAssistantRuntime();
-    threadStore = useThreadList();
-    
-    // If we get here, the hooks are available
-    useEffect(() => {
-      setRuntimeAvailable(true);
-    }, []);
-  } catch (error) {
-    // Hooks are not available, we're outside an AssistantRuntimeProvider
-    // Just continue without the runtime features
-  }
+  const threadStore = {
+    threads: [],
+    currentThreadId: null,
+    setCurrentThread: (threadId: string) => console.log('Mock: setCurrentThread called with', threadId),
+    createThread: () => {
+      console.log('Mock: createThread called');
+      return { id: 'mock-thread-' + Date.now() };
+    },
+    archiveThread: (threadId: string) => console.log('Mock: archiveThread called with', threadId)
+  };
   
   // Set mounted state after client-side hydration
   useEffect(() => {
@@ -282,7 +281,7 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
   // Select a thread
   const handleSelectThread = (threadId: string) => {
     if (threadStore && runtimeAvailable) {
-      threadStore.setActiveThreadId(threadId);
+      threadStore.setCurrentThread(threadId);
       // If we're on a different page, navigate to the chat page
       if (activeSection !== 'pollinations-assistant') {
         onSectionChange('pollinations-assistant');
@@ -362,7 +361,7 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
   const renderThreadItem = (thread: any) => {
     if (!isExpanded) return null; // Only render threads when sidebar is expanded
     
-    const isActive = threadStore?.activeThreadId === thread.id;
+    const isActive = threadStore?.currentThreadId === thread.id;
     const threadTitle = thread.title || 'New Thread';
     const threadDate = new Date(thread.createdAt).toLocaleDateString();
     const messageCount = thread.messages?.length || 0;

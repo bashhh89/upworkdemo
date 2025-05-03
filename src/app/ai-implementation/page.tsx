@@ -38,7 +38,6 @@ export default function AiImplementationPage() {
           Get Instant Access
         </Link>
       </section>
-
       {/* Features/Benefits Section */}
       <section className="py-16 md:py-24 px-4 bg-[#0a0a0a]">
         <div className="max-w-5xl mx-auto">
@@ -88,7 +87,6 @@ export default function AiImplementationPage() {
           </div>
         </div>
       </section>
-
       {/* Access/Form Placeholder Section */}
       <section id="access" className="py-16 md:py-24 px-4">
         <div className="max-w-md mx-auto border border-gray-800 rounded-lg p-8 bg-[#0a0a0a]">
@@ -122,7 +120,6 @@ export default function AiImplementationPage() {
           Trusted by innovative marketing teams.
         </p>
       </section>
-
       {/* Footer */}
       <footer className="py-8 border-t border-gray-800">
         <div className="max-w-5xl mx-auto px-4">
@@ -131,13 +128,12 @@ export default function AiImplementationPage() {
           </p>
         </div>
       </footer>
-
       {/* Back to Home Link */}
       <div className="fixed bottom-6 right-6">
-        <Link 
+        <Link
           href="/"
           className="bg-[#111] text-white font-semibold px-4 py-2 rounded-md hover:bg-[#222] transition-colors border border-gray-800 flex items-center gap-2"
-        >
+          legacyBehavior>
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
             <polyline points="9 22 9 12 15 12 15 22"/>

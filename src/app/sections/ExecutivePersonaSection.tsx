@@ -300,7 +300,6 @@ Note: This profile is based on publicly available information and AI inference. 
     <div className="w-full max-w-5xl mx-auto">
       <h2 className="text-2xl md:text-3xl font-semibold mb-4 text-white">Executive Persona <span className="text-sky-400">Analyzer</span></h2>
       <p className="text-muted-gray mb-6">Generate AI-powered personality insights and communication guidelines for executives.</p>
-      
       {/* Input form */}
       {!profile && (
         <Card className="bg-near-black border-light-gray mb-8 overflow-hidden">
@@ -403,7 +402,6 @@ Note: This profile is based on publicly available information and AI inference. 
           </form>
         </Card>
       )}
-      
       {/* Results display */}
       {profile && (
         <div className="space-y-6 animate-in fade-in duration-500">

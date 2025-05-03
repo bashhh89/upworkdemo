@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from "@/lib/utils";
-import { Send, Plus, RefreshCw, ChevronDown, ChevronUp, Copy, Check, Search, X, MessageSquare, Trash2, Clipboard, Play, Maximize, Minimize, Save, ExternalLink, Bookmark, BookmarkCheck, Users, Target, Globe, Mail, Info, Wrench, Building } from 'lucide-react';
+import { Send, Plus, RefreshCw, ChevronDown, ChevronUp, Copy, Check, Search, X, MessageSquare, Trash2, Clipboard, Play, Maximize, Minimize, Save, ExternalLink, Bookmark, BookmarkCheck, Users, Target, Globe, Mail, Info, Wrench, Building, Book } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,9 @@ import {
 } from "@/components/ui/tooltip";
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from "@/components/ui/use-toast";
+import { useSearchParams } from 'next/navigation'; // Add this for URL parameter handling
+import { detectToolRequest, extractParametersFromMessage, hasAllRequiredParameters, availableTools } from '@/lib/tool-utils';
+import { ToolDefinition } from '@/types/tools'; // Import type definition
 
 interface Message {
   role: 'user' | 'assistant';
@@ -452,6 +455,39 @@ export default function ChatSection() {
 
   // Function to detect and execute tools based on user input
   const detectAndExecuteTool = async (input: string) => {
+    const detectedTool = detectToolRequest(input);
+    
+    if (detectedTool) {
+      // Extract parameters from the message
+      const extractedParams = extractParametersFromMessage(input, detectedTool);
+      
+      // Check if all required parameters are present
+      const hasAllParams = hasAllRequiredParameters(extractedParams, detectedTool);
+      
+      if (hasAllParams) {
+        // All parameters provided, proceed with tool execution
+        return await executeSpecializedTool(detectedTool.name, extractedParams);
+      } else {
+        // Missing parameters, prompt user with form
+        // Add a system message explaining parameter collection
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `I'll help you with that. Let me gather the necessary information for the ${detectedTool.name} tool.`
+        }]);
+        
+        // Set up tool request for parameter collection
+        setPendingToolRequest({
+          tool: detectedTool,
+          params: extractedParams,
+          originalMessage: input
+        });
+        
+        return true; // Tool handling in progress
+      }
+    }
+    
+    // Fall back to regex pattern matching approach for backward compatibility
+    
     // Website Intelligence detection
     const websiteRegex = /analyze\s+(website|site|url|domain)?:?\s*(https?:\/\/[^\s]+)?/i;
     const websiteMatch = input.match(websiteRegex);
@@ -467,7 +503,7 @@ export default function ChatSection() {
           params: {},
           requiredParams: ['url']
         });
-        return null;
+        return true;
       }
     }
     
@@ -488,7 +524,7 @@ export default function ChatSection() {
           params: {},
           requiredParams: ['role', 'industry']
         });
-        return null;
+        return true;
       }
     }
     
@@ -508,123 +544,94 @@ export default function ChatSection() {
           params: {},
           requiredParams: ['product']
         });
-        return null;
+        return true;
       }
     }
     
     // No tool detected
-    return null;
+    return false;
   };
   
   // Function to render tool parameter form
   const renderToolParamForm = () => {
-    if (!pendingTool) return null;
+    if (!pendingToolRequest || !pendingToolRequest.tool) return null;
+    
+    const { tool, params } = pendingToolRequest;
     
     const handleParamSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      executeSpecializedTool(pendingTool.toolName, pendingTool.params);
-      setPendingTool(null);
+      // Execute tool with collected parameters
+      executeSpecializedTool(tool.name, params).then(() => {
+        // Clear pending tool request after execution
+        setPendingToolRequest(null);
+      });
     };
     
-    const updateParam = (param: string, value: string) => {
-      setPendingTool(prev => prev ? {
-        ...prev,
+    const updateParam = (paramName: string, value: string) => {
+      setPendingToolRequest({
+        ...pendingToolRequest,
         params: {
-          ...prev.params,
-          [param]: value
+          ...pendingToolRequest.params,
+          [paramName]: value
         }
-      } : null);
-    };
-    
-    // Get placeholder and label based on tool and parameter
-    const getParamInfo = (toolName: string, param: string) => {
-      switch (toolName) {
-        case 'Website Intelligence':
-          if (param === 'url') return {
-            label: 'Website URL',
-            placeholder: 'https://example.com',
-            icon: <Globe className="h-4 w-4 text-blue-500" />
-          };
-          break;
-        case 'Executive Persona':
-          if (param === 'role') return {
-            label: 'Executive Role',
-            placeholder: 'CEO, CTO, CFO, CMO, etc.',
-            icon: <Users className="h-4 w-4 text-purple-500" />
-          };
-          if (param === 'industry') return {
-            label: 'Industry',
-            placeholder: 'SaaS, Fintech, Healthcare, etc.',
-            icon: <Building className="h-4 w-4 text-purple-500" />
-          };
-          break;
-        case 'Customer Profile':
-          if (param === 'product') return {
-            label: 'Product or Service',
-            placeholder: 'B2B Marketing Software, etc.',
-            icon: <Target className="h-4 w-4 text-green-500" />
-          };
-          break;
-      }
-      return { 
-        label: param.charAt(0).toUpperCase() + param.slice(1),
-        placeholder: `Enter ${param}`,
-        icon: <Info className="h-4 w-4 text-gray-500" />
-      };
+      });
     };
     
     return (
-      <div className="py-4 px-6 bg-[#111] border border-[#333] rounded-lg mb-6 animate-in fade-in duration-300">
-        <h3 className="text-white text-md font-medium mb-4 flex items-center">
-          <Wrench className="h-5 w-5 mr-2 text-blue-500" />
-          Configure <span className="text-blue-400 mx-1">{pendingTool.toolName}</span> Parameters
-        </h3>
-        
-        <form onSubmit={handleParamSubmit}>
-          <div className="space-y-4">
-            {pendingTool.requiredParams.map(param => {
-              const { label, placeholder, icon } = getParamInfo(pendingTool.toolName, param);
-              return (
-                <div key={param} className="space-y-2">
-                  <label className="text-sm text-gray-300">{label}:</label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                      {icon}
-                    </div>
-                    <input
-                      type="text"
-                      value={pendingTool.params[param] || ''}
-                      onChange={(e) => updateParam(param, e.target.value)}
-                      placeholder={placeholder}
-                      className="w-full px-10 py-2 bg-[#0a0a0a] border border-[#333] rounded text-white focus:outline-none focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      <Card className="w-full border border-gray-600 p-4 my-4 bg-gray-900 text-white rounded-lg">
+        <CardContent className="p-0">
+          <h3 className="text-lg font-semibold mb-2">{tool.name}</h3>
+          <p className="text-sm mb-4 text-gray-400">{tool.description}</p>
           
-          <div className="flex justify-end space-x-3 mt-4">
-            <Button 
-              type="button"
-              variant="outline" 
-              size="sm"
-              onClick={() => setPendingTool(null)}
-              className="text-gray-300 hover:text-white"
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit"
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Run Analysis
-            </Button>
-          </div>
-        </form>
-      </div>
+          <form onSubmit={handleParamSubmit} className="space-y-4">
+            {tool.requiredParameters.map((param) => (
+              <div key={param.name} className="space-y-2">
+                <label className="block text-sm font-medium">{param.label}</label>
+                
+                {param.type === 'select' ? (
+                  <select 
+                    value={params[param.name] || ''}
+                    onChange={(e) => updateParam(param.name, e.target.value)}
+                    className="bg-gray-800 border border-gray-600 rounded-md w-full p-2 text-white"
+                    required={param.required !== false}
+                  >
+                    <option value="">Select {param.label}</option>
+                    {param.options?.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input 
+                    type={param.type}
+                    value={params[param.name] || ''}
+                    onChange={(e) => updateParam(param.name, e.target.value)}
+                    placeholder={param.placeholder}
+                    className="bg-gray-800 border border-gray-600 rounded-md w-full p-2 text-white"
+                    required={param.required !== false}
+                  />
+                )}
+              </div>
+            ))}
+            
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={() => setPendingToolRequest(null)}
+                className="border-gray-600 text-white hover:bg-gray-700"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                className="bg-blue-600 text-white hover:bg-blue-700"
+              >
+                Run {tool.name}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     );
   };
 
@@ -2276,484 +2283,499 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
     );
   };
 
+  // New states for tool parameter handling
+  const [pendingToolRequest, setPendingToolRequest] = useState<{
+    tool: ToolDefinition | null,
+    params: Record<string, string>,
+    originalMessage: string
+  } | null>(null);
+  
+  // Get search params for URL parameter handling
+  const searchParams = useSearchParams();
+  
+  // ... existing useEffects ...
+  
+  // Handle URL parameters for direct tool launching
+  useEffect(() => {
+    // Check for tool parameter
+    const toolParam = searchParams?.get('tool');
+    const promptParam = searchParams?.get('prompt');
+    
+    if (toolParam) {
+      let targetTool: ToolDefinition | undefined;
+      
+      // Find the tool based on partial name match
+      if (toolParam.toLowerCase().includes('web') || toolParam.toLowerCase().includes('scan')) {
+        targetTool = availableTools.find(t => t.name.includes('Website'));
+      } else if (toolParam.toLowerCase().includes('exec') || toolParam.toLowerCase().includes('persona')) {
+        targetTool = availableTools.find(t => t.name.includes('Executive'));
+      } else if (toolParam.toLowerCase().includes('deal') || toolParam.toLowerCase().includes('contextual')) {
+        targetTool = availableTools.find(t => t.name.includes('Deal'));
+      }
+      
+      if (targetTool) {
+        console.log('Launching tool from URL param:', targetTool.name);
+        
+        // Set up pending tool request
+        setPendingToolRequest({
+          tool: targetTool,
+          params: {},
+          originalMessage: `Launch ${targetTool.name}`
+        });
+      }
+    } else if (promptParam) {
+      // Set input field with the prompt parameter
+      setInput(promptParam);
+    }
+  }, [searchParams]);
+  
+  // ... existing functions ...
+  
+  // ... rest of the existing component ...
+  
+  // Add the tool parameter form to the render method
   return (
-    <div className="flex flex-col h-full">
-      {/* Thread management header */}
-      <div className="flex items-center p-3 border-b border-[#333333] bg-[#0a0a0a]">
-        <div className="flex items-center space-x-2">
-          <Button
-            onClick={createNewThread}
-            variant="outline"
-            className="flex items-center justify-center bg-[#111] hover:bg-[#222] text-white py-2 px-4 rounded border border-[#333333]"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Thread
-          </Button>
-          
-          <div className="relative">
-            <button
-              onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-              className="flex items-center justify-between bg-[#111] hover:bg-[#222] text-white py-2 px-4 rounded border border-[#333333] min-w-[160px] h-9"
-            >
-              <div className="flex items-center">
-                <span className="text-sm font-medium truncate">
-                  {isLoadingModels ? "Loading..." : getModelDisplay(selectedModel)}
-                </span>
-              </div>
-              <ChevronDown className="h-4 w-4 ml-2 flex-shrink-0" />
-            </button>
-            
-            {modelDropdownOpen && (
-              <div className="absolute left-0 mt-1 w-72 bg-[#111111] border border-[#333333] rounded-md shadow-lg z-10 max-h-96 overflow-hidden">
-                <div className="p-2 border-b border-[#333333] sticky top-0 bg-[#111111]">
-                  <div className="relative">
-                    <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      type="text"
-                      value={modelSearch}
-                      onChange={(e) => setModelSearch(e.target.value)}
-                      placeholder="Search models..."
-                      className="w-full px-3 py-1 pl-8 pr-8 bg-[#0a0a0a] border border-[#444] rounded text-sm focus:outline-none"
-                    />
-                    {modelSearch && (
-                      <button 
-                        onClick={() => setModelSearch('')}
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+    <div className="flex flex-col h-full w-full relative">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-36">
+        {showLibrary && <CodeLibrary />}
+        {showToolResultsLibrary && <ToolResultsLibrary />}
+        
+        {(!showLibrary && !showToolResultsLibrary) && (
+          <>
+            {messages.map((message, index) => (
+              <div 
+                key={index} 
+                className={cn("flex flex-col", message.role === 'user' ? "items-end" : "items-start")}
+              >
+                {/* Message styling and content rendering */}
+                <div 
+                  className={cn(
+                    "max-w-[90%] md:max-w-[80%] lg:max-w-[70%] py-3 px-4 my-1",
+                    message.role === 'user' 
+                      ? "bg-[#0f172a] text-white rounded-l-xl rounded-br-xl" 
+                      : "bg-[#111111] text-white rounded-r-xl rounded-bl-xl"
+                  )}
+                >
+                  {/* Show model tag for assistant responses */}
+                  {message.role === 'assistant' && message.model && (
+                    <div className="flex justify-between mb-1">
+                      <div className="py-0.5 px-2 bg-[#333333] rounded-md text-xs text-gray-300">
+                        {getModelDisplay(message.model)}
+                      </div>
+                      
+                      {message.thinking && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 p-0 text-xs text-gray-400 hover:text-white"
+                          onClick={() => toggleThinking(index.toString())}
+                        >
+                          {expandedThinking.includes(index.toString()) ? (
+                            <ChevronUp className="h-4 w-4 mr-1" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 mr-1" />
+                          )}
+                          {expandedThinking.includes(index.toString()) ? "Hide" : "Show"} thinking
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Thinking section */}
+                  {message.role === 'assistant' && message.thinking && expandedThinking.includes(index.toString()) && (
+                    <div className="mb-3 p-3 bg-[#1a1a1a] rounded border border-[#333333] text-sm text-gray-300">
+                      <div className="mb-2 text-xs font-medium text-gray-400">Thinking Process:</div>
+                      <ReactMarkdown 
+                        children={message.thinking} 
+                        remarkPlugins={[remarkGfm]} 
+                        components={{
+                          p: ({node, ...props}) => <p className="mb-2" {...props} />,
+                          ul: ({node, ...props}) => <ul className="list-disc ml-6 mb-3" {...props} />,
+                          ol: ({node, ...props}) => <ol className="list-decimal ml-6 mb-3" {...props} />,
+                          code: ({node, inline, className, children, ...props}: any) => {
+                            if (inline) {
+                              return <code className="px-1 py-0.5 bg-[#333333] rounded text-white" {...props}>{children}</code>;
+                            }
+                            const language = getLanguageFromClassName(className);
+                            return (
+                              <div className="relative mb-3">
+                                <div className="absolute right-2 top-2 flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 bg-[#333333] hover:bg-[#444444]"
+                                    onClick={() => handleCopyCode(String(children).replace(/\n$/, ''))}
+                                  >
+                                    {copiedCode === String(children).replace(/\n$/, '') ? (
+                                      <Check className="h-4 w-4 text-green-500" />
+                                    ) : (
+                                      <Copy className="h-4 w-4 text-gray-300" />
+                                    )}
+                                  </Button>
+                                </div>
+                                <div className="overflow-hidden bg-[#0a0a0a] border border-[#333333] rounded-md">
+                                  <div className="px-4 py-1 bg-[#111111] border-b border-[#333333] text-xs text-gray-400">
+                                    {language || 'Code'}
+                                  </div>
+                                  <pre className="p-4 overflow-x-auto">
+                                    <code className={className} {...props}>{children}</code>
+                                  </pre>
+                                </div>
+                              </div>
+                            );
+                          }
+                        }} 
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Render message content with ReactMarkdown */}
+                  <ReactMarkdown 
+                    children={message.content} 
+                    remarkPlugins={[remarkGfm]} 
+                    components={{
+                      p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                      ul: ({node, ...props}) => <ul className="list-disc ml-6 mb-3 last:mb-0" {...props} />,
+                      ol: ({node, ...props}) => <ol className="list-decimal ml-6 mb-3 last:mb-0" {...props} />,
+                      a: ({node, ...props}) => <a className="text-blue-400 hover:underline break-all" target="_blank" rel="noopener noreferrer" {...props} />,
+                      code: ({node, inline, className, children, ...props}: any) => {
+                        if (inline) {
+                          return <code className="px-1 py-0.5 bg-[#202020] rounded text-white" {...props}>{children}</code>;
+                        }
+                        
+                        const isViewingCode = codePreview && String(children).replace(/\n$/, '') === codePreview.code;
+                        const codeString = String(children).replace(/\n$/, '');
+                        const language = getLanguageFromClassName(className);
+                        
+                        let inferredLanguage = language || 'text';
+                        if (!language) {
+                          if (isHTML(codeString)) inferredLanguage = 'html';
+                          else if (isCSS(codeString)) inferredLanguage = 'css';
+                        }
+                        
+                        return (
+                          <div className="relative my-3">
+                            <div className="absolute right-2 top-1.5 flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 bg-[#333333] hover:bg-[#444444]"
+                                onClick={() => handleCopyCode(codeString)}
+                              >
+                                {copiedCode === codeString ? (
+                                  <Check className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <Copy className="h-4 w-4 text-gray-300" />
+                                )}
+                              </Button>
+                              
+                              {(isHTML(codeString) || isCSS(codeString) || language) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={cn(
+                                    "h-8 w-8 p-0",
+                                    isViewingCode
+                                      ? "bg-blue-600 hover:bg-blue-700"
+                                      : "bg-[#333333] hover:bg-[#444444]"
+                                  )}
+                                  onClick={() => handleShowPreview(codeString, inferredLanguage)}
+                                >
+                                  {isViewingCode ? (
+                                    <Minimize className="h-4 w-4 text-white" />
+                                  ) : (
+                                    <Maximize className="h-4 w-4 text-gray-300" />
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+                            <div className="overflow-hidden bg-[#0a0a0a] border border-[#333333] rounded-md">
+                              <div className="flex justify-between px-4 py-1.5 bg-[#111111] border-b border-[#333333]">
+                                <span className="text-xs text-gray-400">{inferredLanguage}</span>
+                              </div>
+                              <pre className="p-4 overflow-x-auto">
+                                <code className={className || `language-${inferredLanguage}`} {...props}>{children}</code>
+                              </pre>
+                            </div>
+                          </div>
+                        );
+                      }
+                    }} 
+                  />
+                  
+                  {/* Show tool results if available */}
+                  {message.role === 'assistant' && message.toolResult && (
+                    <div className="my-2 p-2 border border-[#333333] rounded-md bg-[#111111]">
+                      <div className="mb-1 text-sm font-medium">
+                        Tool Result: {message.toolResult.toolName}
+                      </div>
+                      <Button 
+                        variant="link" 
+                        size="sm" 
+                        className="text-xs px-0 text-blue-400" 
+                        onClick={() => {
+                          window.open(message.toolResult?.shareUrl, '_blank');
+                        }}
                       >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
+                        <ExternalLink className="w-3 h-3 mr-1" /> View Full Result
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 
-                <div className="overflow-y-auto flex-1 max-h-80">
-                  {isLoadingModels ? (
-                    <div className="flex items-center justify-center p-4 text-gray-400">
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Loading available models...
-                    </div>
-                  ) : filteredModels.length > 0 ? (
-                    filteredModels.map((model) => (
+                {/* Message Actions */}
+                <div className="flex mt-1 justify-end min-w-[150px]">
+                  {message.role === 'assistant' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-gray-400 hover:text-white"
+                      onClick={() => handleCopyMessage(message.content)}
+                    >
+                      {copiedMessage === message.content ? (
+                        <>
+                          <Check className="h-3 w-3 mr-1" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3 mr-1" />
+                          Copy
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+            
+            {/* Tool parameter forms */}
+            {pendingTool && renderToolParamForm()}
+            {pendingToolRequest && renderToolParamForm()}
+            
+            {isLoading && <TypingIndicator />}
+            <div ref={endOfMessagesRef} />
+          </>
+        )}
+      </div>
+      {/* Input area */}
+      <div className="absolute bottom-0 left-0 right-0 bg-black border-t border-[#222222] p-4 z-10">
+        {codePreview && (
+          <CodePreview 
+            code={codePreview.code}
+            language={codePreview.language}
+            id={codePreview.id}
+            isSaving={isSavingArtifact}
+            setIsSaving={setIsSavingArtifact}
+            artifactTitle={artifactTitle}
+            setArtifactTitle={setArtifactTitle}
+            artifactDescription={artifactDescription}
+            setArtifactDescription={setArtifactDescription}
+            toggleSaving={toggleSavingArtifact}
+          />
+        )}
+        
+        <div className="flex items-start gap-2 max-w-5xl mx-auto">
+          <Textarea 
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask a question or prompt the assistant..."
+            className="flex-1 bg-[#111111] border-gray-800 focus:border-gray-600 min-h-[60px] max-h-[200px] placeholder:text-gray-400 resize-none"
+            disabled={isLoading}
+          />
+          <Button 
+            onClick={handleSend} 
+            disabled={!input.trim() || isLoading}
+            className="h-[60px] w-[60px] bg-blue-600 hover:bg-blue-700 flex items-center justify-center p-3"
+          >
+            {isLoading ? (
+              <RefreshCw className="h-5 w-5 animate-spin" />
+            ) : (
+              <Send className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
+        
+        {/* Model selection - click to open dropdown */}
+        <div 
+          className="mt-3 max-w-5xl mx-auto flex justify-between items-center text-sm text-gray-400"
+          ref={dropdownRef}
+        >
+          <div className="flex items-center">
+            <button 
+              className="flex items-center gap-1 hover:text-white"
+              onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+            >
+              <MessageSquare className="h-4 w-4" />
+              {getModelDisplay(selectedModel)}
+              {modelDropdownOpen ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
+            
+            {/* Model dropdown */}
+            {modelDropdownOpen && (
+              <div className="absolute top-full mt-1 w-72 bg-[#111111] border border-[#333333] shadow-lg rounded-md overflow-hidden z-50">
+                <div className="p-2 border-b border-[#333333]">
+                  <Input
+                    placeholder="Search models..."
+                    value={modelSearch}
+                    onChange={(e) => setModelSearch(e.target.value)}
+                    className="w-full bg-[#0a0a0a] border-[#444444]"
+                  />
+                </div>
+                <div className="max-h-[350px] overflow-y-auto p-1">
+                  {pollinationsModels
+                    .filter(model => 
+                      model.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
+                      model.description.toLowerCase().includes(modelSearch.toLowerCase())
+                    )
+                    .map(model => (
                       <div 
                         key={model.id}
                         className={cn(
-                          "px-4 py-2 cursor-pointer hover:bg-[#222]",
-                          selectedModel === model.id && "bg-[#222]"
+                          "px-3 py-2 cursor-pointer hover:bg-[#1a1a1a] rounded-md",
+                          selectedModel === model.id && "bg-[#1a1a1a]"
                         )}
                         onClick={() => {
                           setSelectedModel(model.id);
                           setModelDropdownOpen(false);
-                          setModelSearch('');
                         }}
                       >
-                        <div className="font-medium">{model.name}</div>
+                        <div className="font-medium text-white">{model.name}</div>
                         <div className="text-xs text-gray-400">{model.description}</div>
                       </div>
                     ))
-                  ) : (
-                    <div className="px-4 py-2 text-center text-gray-400">No models found</div>
+                  }
+                  {isLoadingModels && (
+                    <div className="flex justify-center items-center p-4">
+                      <RefreshCw className="h-5 w-5 animate-spin text-gray-400" />
+                    </div>
                   )}
                 </div>
               </div>
             )}
           </div>
           
-          {/* Add Library Button */}
-          <Button
-            onClick={() => setShowLibrary(true)}
-            variant="outline"
-            className="flex items-center justify-center bg-[#111] hover:bg-[#222] text-white py-2 px-4 rounded border border-[#333333] ml-2"
-          >
-            <Bookmark className="h-4 w-4 mr-2" />
-            Code Library
-            {savedArtifacts.length > 0 && (
-              <span className="ml-2 bg-blue-500 text-white text-xs rounded-full px-2 py-0.5">
-                {savedArtifacts.length}
-              </span>
-            )}
-          </Button>
-          
-          {/* Add Tool Results Library Button */}
-          <Button
-            onClick={() => setShowToolResultsLibrary(true)}
-            variant="outline"
-            className="flex items-center justify-center bg-[#111] hover:bg-[#222] text-white py-2 px-4 rounded border border-[#333333] ml-2"
-          >
-            <Globe className="h-4 w-4 mr-2" />
-            Tool Results
-            {savedToolResults.length > 0 && (
-              <span className="ml-2 bg-blue-500 text-white text-xs rounded-full px-2 py-0.5">
-                {savedToolResults.length}
-              </span>
-            )}
-          </Button>
-          
-          {/* Remove Auto Preview Toggle Button but keep functionality enabled */}
-          <input type="hidden" value="true" />
-        </div>
-        
-        {/* Thread selector (only shows when there are threads) */}
-        {threads.length > 0 && (
-          <div className="relative ml-auto">
-            <button
-              onClick={() => setThreadDropdownOpen(!threadDropdownOpen)}
-              className="flex items-center justify-between bg-[#111] hover:bg-[#222] text-white py-2 px-4 rounded border border-[#333333] min-w-[140px] h-9"
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-gray-400 hover:text-white"
+              onClick={() => setShowLibrary(!showLibrary)}
             >
-              <span className="text-sm font-medium truncate">
-                {activeThreadId 
-                  ? threads.find(t => t.id === activeThreadId)?.name || "Current Thread" 
-                  : "Select Thread"}
-              </span>
-              <ChevronDown className="h-4 w-4 ml-2 flex-shrink-0" />
-            </button>
-            
-            {threadDropdownOpen && (
-              <div className="absolute right-0 mt-1 w-72 bg-[#111111] border border-[#333333] rounded-md shadow-lg z-10">
-                <div className="overflow-y-auto max-h-80 divide-y divide-[#222]">
-                  {threads
-                    .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
-                    .map((thread) => (
-                      <div 
-                        key={thread.id}
-                        className={cn(
-                          "px-3 py-2 cursor-pointer hover:bg-[#222] flex justify-between items-center",
-                          activeThreadId === thread.id && "bg-[#222] border-l-2 border-blue-500"
-                        )}
-                        onClick={() => {
-                          selectThread(thread.id);
-                          setThreadDropdownOpen(false);
-                        }}
-                      >
-                        <div className="truncate flex-1">
-                          <div className="font-medium truncate">{thread.name}</div>
-                          <div className="text-xs text-gray-400 flex items-center">
-                            <span className="mr-2">{new Date(thread.lastUpdated).toLocaleString(undefined, { 
-                              month: 'short', 
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}</span>
-                            <span className="text-xs text-gray-500">{thread.messages.length} msgs</span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={(e) => deleteThread(thread.id, e)}
-                          className="p-1 text-gray-400 hover:text-white rounded-full hover:bg-[#333]"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      
-      {/* Main chat interface */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-[#000000]">
-        {/* Chat messages area */}
-        <div className="flex-1 overflow-auto p-6">
-          {codePreview && (
-            <CodePreview
-              code={codePreview.code}
-              language={codePreview.language}
-              id={codePreview.id}
-              // Pass state and functions from parent
-              isSaving={isSavingArtifact}
-              setIsSaving={setIsSavingArtifact}
-              artifactTitle={artifactTitle}
-              setArtifactTitle={setArtifactTitle}
-              artifactDescription={artifactDescription}
-              setArtifactDescription={setArtifactDescription}
-              toggleSaving={toggleSavingArtifact}
-            />
-          )}
-          
-          {showLibrary && <CodeLibrary />}
-          
-          {showToolResultsLibrary && <ToolResultsLibrary />}
-          
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center px-4">
-              <div className="max-w-3xl text-center">
-                <h2 className="text-3xl font-bold text-white mb-2">Deliver AI Assistant</h2>
-                <p className="text-lg text-gray-400 mb-8">Your intelligent partner for marketing and sales tasks</p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10 w-full max-w-2xl mx-auto">
-                  {suggestions.map((suggestion, i) => (
-                    <Card
-                      key={i}
-                      className="bg-[#111] border border-[#333] hover:border-blue-600 hover:bg-[#151515] transition-colors cursor-pointer group"
-                      onClick={() => {
-                        setInput(suggestion);
-                      }}
-                    >
-                      <CardContent className="p-4 flex items-center">
-                        {i === 0 && <Search className="h-5 w-5 text-blue-400 mr-4 flex-shrink-0 group-hover:text-blue-500" />}
-                        {i === 1 && <Users className="h-5 w-5 text-blue-400 mr-4 flex-shrink-0 group-hover:text-blue-500" />}
-                        {i === 2 && <Target className="h-5 w-5 text-blue-400 mr-4 flex-shrink-0 group-hover:text-blue-500" />}
-                        {i === 3 && <Globe className="h-5 w-5 text-blue-400 mr-4 flex-shrink-0 group-hover:text-blue-500" />}
-                        {i === 4 && <Mail className="h-5 w-5 text-blue-400 mr-4 flex-shrink-0 group-hover:text-blue-500" />}
-                        <div className="text-left">
-                          <span className="text-white group-hover:text-blue-400">{suggestion}</span>
-                          <p className="text-xs text-gray-400 mt-1 group-hover:text-gray-300">
-                            {i === 0 && "Website Intelligence Scanner - Analyze site performance and content"}
-                            {i === 1 && "Executive Persona - Create detailed buyer personas for your target audience"}
-                            {i === 2 && "Customer Profile Generator - Build detailed ICP for marketing strategy"}
-                            {i === 3 && "Competitive Analysis - Extract and analyze competitor websites"}
-                            {i === 4 && "Sales Enablement - Create compelling outreach content"}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-                
-                <div className="text-gray-500 text-sm">
-                  <p>You can also directly ask for assistance with generating content, analyzing data, or implementing strategies.</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {messages.map((message, index) => (
-                <div 
-                  key={index} 
-                  className={cn(
-                    "flex",
-                    message.role === "user" ? "justify-end" : "justify-start"
-                  )}
-                >
-                  <div 
-                    className={cn(
-                      "relative max-w-[90%] rounded-md group",
-                      message.role === "user" 
-                        ? "bg-[#0a0a0a] border border-[#333333] text-white p-5 ml-auto" 
-                        : "bg-[#111111] border border-[#333333] text-white p-5"
-                    )}
-                  >
-                    {message.role === 'assistant' && message.model && (
-                      <div className="absolute top-1 right-1 flex items-center gap-2">
-                        <span className="bg-[#222] text-xs px-2 py-0.5 rounded-full text-gray-300">
-                          {getModelDisplay(message.model)}
-                        </span>
-                        
-                        {/* Copy whole message button */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button 
-                                onClick={() => handleCopyMessage(message.content)}
-                                className="bg-[#222] text-xs p-1 rounded-full text-gray-300 hover:text-white hover:bg-[#333] opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                {copiedMessage === message.content ? (
-                                  <Check className="h-3 w-3" />
-                                ) : (
-                                  <Clipboard className="h-3 w-3" />
-                                )}
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{copiedMessage === message.content ? "Copied!" : "Copy message"}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    )}
-                    
-                    {/* Thinking section (only for assistant messages with thinking content) */}
-                    {message.role === 'assistant' && message.thinking && (
-                      <div className="mb-4">
-                        <button 
-                          onClick={() => toggleThinking(`${index}`)}
-                          className="flex items-center text-xs font-medium text-gray-400 hover:text-white bg-[#222] hover:bg-[#333] px-2 py-1 rounded mb-2 transition-colors"
-                        >
-                          {expandedThinking.includes(`${index}`) ? (
-                            <>
-                              <ChevronUp className="h-3 w-3 mr-1" />
-                              Hide AI Thinking
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown className="h-3 w-3 mr-1" />
-                              Show AI Thinking
-                            </>
-                          )}
-                        </button>
-                        
-                        {expandedThinking.includes(`${index}`) && (
-                          <div className="p-3 bg-[#0a0a0a] border border-[#333] rounded-md mb-3 text-gray-300 text-sm">
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              components={{
-                                code({node, inline, className, children, ...props}: any) {
-                                  const match = /language-(\w+)/.exec(className || '');
-                                  const codeString = String(children).replace(/\n$/, '');
-                                  
-                                  if (inline) {
-                                    return <code className="px-1 py-0.5 bg-[#333] rounded text-xs font-mono" {...props}>{children}</code>
-                                  }
-                                  
-                                  return (
-                                    <div className="relative mt-2 mb-2 rounded overflow-hidden">
-                                      <div className="flex items-center justify-between bg-[#1a1a1a] px-3 py-1 rounded-t">
-                                        <span className="text-xs text-gray-400">{match && match[1] ? match[1] : 'code'}</span>
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <button 
-                                                onClick={() => handleCopyCode(codeString)}
-                                                className="text-xs text-gray-400 hover:text-white"
-                                              >
-                                                {copiedCode === codeString ? (
-                                                  <Check className="h-3 w-3" />
-                                                ) : (
-                                                  <Copy className="h-3 w-3" />
-                                                )}
-                                              </button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              <p>{copiedCode === codeString ? "Copied!" : "Copy code"}</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      </div>
-                                      <pre className="px-3 py-2 bg-[#0a0a0a] rounded-b overflow-auto">
-                                        <code className="text-white text-xs font-mono">{children}</code>
-                                      </pre>
-                                    </div>
-                                  );
-                                },
-                                p: ({children}) => <p className="mb-2 last:mb-0 text-gray-300 text-xs">{children}</p>,
-                                ul: ({children}) => <ul className="list-disc pl-4 mb-2 last:mb-0 text-gray-300 text-xs">{children}</ul>,
-                                ol: ({children}) => <ol className="list-decimal pl-4 mb-2 last:mb-0 text-gray-300 text-xs">{children}</ol>,
-                                li: ({children}) => <li className="mb-1 text-gray-300 text-xs">{children}</li>,
-                              }}
-                            >
-                              {message.thinking}
-                            </ReactMarkdown>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        code({node, inline, className, children, ...props}: any) {
-                          const match = /language-(\w+)/.exec(className || '');
-                          const codeString = String(children).replace(/\n$/, '');
-                          const language = getLanguageFromClassName(className);
-                          
-                          if (inline) {
-                            return <code className="px-1 py-0.5 bg-[#222] rounded text-sm font-mono" {...props}>{children}</code>
-                          }
-                          
-                          const canPreview = ['html', 'css', 'javascript', 'js', 'jsx', 'tsx', 'react'].includes(language) || 
-                                           isHTML(codeString) || 
-                                           isCSS(codeString);
-                          
-                          return (
-                            <div className="relative mt-4 mb-4 rounded overflow-hidden">
-                              <div className="flex items-center justify-between bg-[#1a1a1a] px-4 py-1 rounded-t">
-                                <span className="text-xs text-gray-400">{match && match[1] ? match[1] : 'code'}</span>
-                                <div className="flex items-center gap-2">
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <button 
-                                          onClick={() => handleCopyCode(codeString)}
-                                          className="text-xs text-gray-400 hover:text-white"
-                                        >
-                                          {copiedCode === codeString ? (
-                                            <Check className="h-3 w-3" />
-                                          ) : (
-                                            <Copy className="h-3 w-3" />
-                                          )}
-                                        </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>{copiedCode === codeString ? "Copied!" : "Copy code"}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </div>
-                              </div>
-                              <pre className="px-4 py-3 bg-[#0a0a0a] rounded-b overflow-auto">
-                                <code className="text-white text-sm font-mono">{children}</code>
-                              </pre>
-                              {canPreview && (
-                                <div className="mt-2 flex justify-end">
-                                  <button
-                                    onClick={() => handleShowPreview(codeString, language)}
-                                    className="text-xs flex items-center gap-1 text-gray-300 hover:text-white bg-[#1a1a1a] px-3 py-1.5 rounded"
-                                  >
-                                    <Play className="h-3 w-3" /> Preview Code
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        },
-                        p: ({children}) => <p className="mb-4 last:mb-0 text-gray-100">{children}</p>,
-                        ul: ({children}) => <ul className="list-disc pl-5 mb-4 last:mb-0 text-gray-100">{children}</ul>,
-                        ol: ({children}) => <ol className="list-decimal pl-5 mb-4 last:mb-0 text-gray-100">{children}</ol>,
-                        li: ({children}) => <li className="mb-1 text-gray-100">{children}</li>,
-                        a: ({href, children}) => <a href={href} className="text-blue-400 hover:underline" target="_blank" rel="noreferrer">{children}</a>,
-                        blockquote: ({children}) => <blockquote className="border-l-4 border-[#333] pl-4 italic my-4 text-gray-400">{children}</blockquote>,
-                        h1: ({children}) => <h1 className="text-2xl font-bold my-4 text-white">{children}</h1>,
-                        h2: ({children}) => <h2 className="text-xl font-bold my-3 text-white">{children}</h2>,
-                        h3: ({children}) => <h3 className="text-lg font-bold my-2 text-white">{children}</h3>,
-                        table: ({children}) => <div className="overflow-auto my-4 border border-[#333] rounded"><table className="w-full border-collapse">{children}</table></div>,
-                        thead: ({children}) => <thead className="bg-[#111] text-left">{children}</thead>,
-                        tbody: ({children}) => <tbody>{children}</tbody>,
-                        tr: ({children}) => <tr className="border-b border-[#333]">{children}</tr>,
-                        th: ({children}) => <th className="p-2 border-r last:border-r-0 border-[#333] text-white">{children}</th>,
-                        td: ({children}) => <td className="p-2 border-r last:border-r-0 border-[#333] text-gray-300">{children}</td>,
-                      }}
-                    >
-                      {message.content}
-                    </ReactMarkdown>
-                  </div>
-                </div>
-              ))}
-              
-              {/* Typing indicator appears in the chat flow */}
-              {isLoading && <TypingIndicator />}
-              
-              <div ref={endOfMessagesRef} />
-            </div>
-          )}
-        </div>
-        
-        {/* Input area - improved with shadcn styling */}
-        <div className="border-t border-[#333333] p-4 bg-[#0a0a0a]">
-          <div className="relative mx-auto max-w-4xl flex items-end">
-            <div className="relative flex-1">
-              <Textarea
-                placeholder="Type a message..."
-                className="w-full min-h-[52px] max-h-[200px] bg-[#0a0a0a] border border-[#333333] rounded-md pl-4 pr-12 py-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={isLoading}
-              />
-            </div>
+              {showLibrary ? (
+                <>
+                  <Book className="h-4 w-4 mr-1" />
+                  Close Library
+                </>
+              ) : (
+                <>
+                  <Book className="h-4 w-4 mr-1" />
+                  Code Library
+                </>
+              )}
+            </Button>
             
             <Button
-              className={cn(
-                "ml-2 p-2 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 shadow-md transition-all duration-200 h-10 w-10 flex items-center justify-center",
-                (!input.trim() || isLoading) && "opacity-50 cursor-not-allowed from-blue-500/70 to-blue-400/70"
-              )}
-              disabled={isLoading || !input.trim()}
-              onClick={handleSend}
-              size="icon"
-              aria-label="Send message"
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-gray-400 hover:text-white"
+              onClick={() => setShowToolResultsLibrary(!showToolResultsLibrary)}
             >
-              <Send className="h-5 w-5" />
+              {showToolResultsLibrary ? (
+                <>
+                  <Wrench className="h-4 w-4 mr-1" />
+                  Close Results
+                </>
+              ) : (
+                <>
+                  <Wrench className="h-4 w-4 mr-1" />
+                  Tool Results
+                </>
+              )}
             </Button>
+            
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-gray-400 hover:text-white"
+                onClick={() => setThreadDropdownOpen(!threadDropdownOpen)}
+              >
+                <Clipboard className="h-4 w-4 mr-1" />
+                {activeThreadId ? 
+                  threads.find(t => t.id === activeThreadId)?.name || 'Current Thread' : 
+                  'No Thread'
+                }
+                {threadDropdownOpen ? (
+                  <ChevronUp className="h-3 w-3 ml-1" />
+                ) : (
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                )}
+              </Button>
+              
+              {/* Thread dropdown */}
+              {threadDropdownOpen && (
+                <div className="absolute bottom-full right-0 mb-1 w-[250px] bg-[#111111] border border-[#333333] shadow-lg rounded-md overflow-hidden z-50">
+                  <div className="flex p-2 border-b border-[#333333]">
+                    <Input
+                      placeholder="New thread name..."
+                      value={threadNameInput}
+                      onChange={(e) => setThreadNameInput(e.target.value)}
+                      className="flex-1 mr-1 bg-[#0a0a0a] border-[#444444] h-8 text-xs"
+                    />
+                    <Button
+                      size="sm"
+                      className="h-8 bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                      onClick={() => {
+                        createNewThread();
+                        setThreadDropdownOpen(false);
+                      }}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      New
+                    </Button>
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto">
+                    {threads.length === 0 ? (
+                      <div className="px-3 py-2 text-gray-400 text-xs">
+                        No threads yet. Start a conversation or create a new thread.
+                      </div>
+                    ) : (
+                      threads
+                        .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
+                        .map(thread => (
+                          <div 
+                            key={thread.id}
+                            className={cn(
+                              "group px-3 py-2 flex justify-between items-center cursor-pointer hover:bg-[#1a1a1a]",
+                              activeThreadId === thread.id && "bg-[#1a1a1a]"
+                            )}
+                            onClick={() => {
+                              selectThread(thread.id);
+                              setThreadDropdownOpen(false);
+                            }}
+                          >
+                            <div className="truncate text-white">{thread.name}</div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white"
+                              onClick={(e) => deleteThread(thread.id, e)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

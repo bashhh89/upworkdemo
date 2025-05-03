@@ -1,10 +1,4 @@
 import type { NextConfig } from "next";
-let withSentryConfig;
-try {
-  withSentryConfig = require('@sentry/nextjs').withSentryConfig;
-} catch (e) {
-  withSentryConfig = (config) => config;
-}
 
 const nextConfig: NextConfig = {
   // Enable both static and server-side rendering
@@ -68,10 +62,5 @@ const nextConfig: NextConfig = {
   },
 };
 
-// For Sentry config
-const sentryWebpackPluginOptions = {
-  silent: true,
-};
-
-// Export configuration with optional Sentry integration
-export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);
+// Export configuration directly since Sentry has been removed
+export default nextConfig;

@@ -24,8 +24,10 @@ import { ContextualDealWriterSection } from './sections/ContextualDealWriterSect
 // Additional imports used by AiLandingPage (kept as they might be used in tool sections)
 import Image from 'next/image';
 import Link from 'next/link';
-import { ImageIcon, FileTextIcon, GlobeIcon, LightbulbIcon, MessageSquare } from 'lucide-react'; // Imported specific Lucide icons
+import { ImageIcon, FileTextIcon, GlobeIcon, LightbulbIcon, MessageSquare, Globe, Users, Target, Wrench, ArrowRight } from 'lucide-react'; // Imported specific Lucide icons
 import ChatSection from './sections/ChatSection';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState<string>('home');
@@ -64,46 +66,131 @@ export default function Home() {
   const renderMainContent = () => {
     if (activeSection === 'home') {
       return (
-        <div className="w-full max-w-7xl mx-auto py-12 px-4 flex flex-col gap-12"> {/* Container with max width, centered, generous vertical spacing, added horizontal padding */}
-
-          {/* Welcome/Status Section - Keep this as a primary title block */}
-          <div className="flex flex-col gap-2"> {/* Vertical spacing within section */}
-            <h2 className="text-4xl md:text-5xl font-bold text-white">Welcome, Ahmad.</h2> {/* Sharp welcome message */}
-            <p className="text-lg text-[#a0a0a0]">Ready to execute powerful AI actions.</p> {/* Subtle status */}
-          </div>
-
-          {/* AI Action Launchpad Section */}
-          <div className="flex flex-col gap-6">
-            <h3 className="text-xl font-semibold text-white uppercase tracking-wider">AI ACTION LAUNCHPAD</h3> {/* Sharp header */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Responsive grid with generous gap */}
-              {/* Action Tiles */}
-              <div 
-                className="bg-[#0a0a0a] text-white border border-[#333333] p-8 flex flex-col items-start gap-4 hover:bg-[#1a1a1a] transition-colors duration-150 cursor-pointer rounded-none"
-                onClick={() => handleSectionChange('pollinations-assistant')}
-              > 
-                <MessageSquare className="w-8 h-8 text-white" /> {/* MessageSquare icon */}
-                <span className="font-semibold text-xl">Chat Assistant</span>
+        <div className="min-h-screen bg-[#0a0a0a] text-white">
+          <header className="py-16 bg-gradient-to-r from-[#111] to-[#0a0a0a]">
+            <div className="container mx-auto px-4">
+              <h1 className="text-4xl md:text-6xl font-bold text-center mb-6">
+                Deliver AI Assistant
+              </h1>
+              <p className="text-xl text-center text-gray-400 max-w-3xl mx-auto">
+                Your intelligent partner for marketing and sales tasks with specialized tools
+              </p>
+              <div className="flex justify-center mt-10 gap-4">
+                <Link href="/chat">
+                  <Button size="lg" className="gap-2">
+                    <MessageSquare className="h-5 w-5" />
+                    Open Chat
+                  </Button>
+                </Link>
+                <Link href="/test-tools">
+                  <Button size="lg" variant="outline" className="gap-2">
+                    <Wrench className="h-5 w-5" />
+                    Explore Tools
+                  </Button>
+                </Link>
               </div>
-              <div className="bg-[#0a0a0a] text-white border border-[#333333] p-8 flex flex-col items-start gap-4 hover:bg-[#1a1a1a] transition-colors duration-150 cursor-pointer rounded-none"> {/* Sharp tile styling */}
-                <ImageIcon className="w-8 h-8 text-white" /> {/* Image icon */}
-                <span className="font-semibold text-xl">Generate Image</span>
-              </div>
-              <div className="bg-[#0a0a0a] text-white border border-[#333333] p-8 flex flex-col items-start gap-4 hover:bg-[#1a1a1a] transition-colors duration-150 cursor-pointer rounded-none">
-                 <FileTextIcon className="w-8 h-8 text-white" /> {/* File text icon */}
-                <span className="font-semibold text-xl">Write Deal Snippet</span>
-              </div>
-              <div className="bg-[#0a0a0a] text-white border border-[#333333] p-8 flex flex-col items-start gap-4 hover:bg-[#1a1a1a] transition-colors duration-150 cursor-pointer rounded-none">
-                <GlobeIcon className="w-8 h-8 text-white" /> {/* Globe icon */}
-                <span className="font-semibold text-xl">Analyze Website</span>
-              </div>
-               {/* Corrected: Wrapped LightbulbIcon and span in its own tile div */}
-              <div className="bg-[#0a0a0a] text-white border border-[#333333] p-8 flex flex-col items-start gap-4 hover:bg-[#1a1a1a] transition-colors duration-150 cursor-pointer rounded-none">
-                 <LightbulbIcon className="w-8 h-8 text-white" /> {/* Lightbulb icon */}
-                <span className="font-semibold text-xl">Generate Idea</span>
-              </div>
-              {/* Add more tiles as needed */}
             </div>
-          </div>
+          </header>
+
+          <main className="py-16 container mx-auto px-4">
+            <section className="mb-16">
+              <h2 className="text-3xl font-bold mb-10 text-center">Specialized Tools</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <Card className="bg-[#111] border-blue-800 hover:border-blue-600 transition-colors">
+                  <CardHeader>
+                    <Globe className="h-8 w-8 text-blue-500 mb-2" />
+                    <CardTitle>Website Intelligence Scanner</CardTitle>
+                    <CardDescription>
+                      Analyze any website to extract business intelligence and insights
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-400 mb-4">
+                      Extract key information about competitors, industry trends, and marketing strategies from any website.
+                    </p>
+                    <code className="block bg-[#0a0a0a] p-3 rounded text-sm font-mono border border-[#222] mt-4">
+                      Analyze website: example.com
+                    </code>
+                  </CardContent>
+                  <CardFooter>
+                    <Link href="/chat?tool=website" className="w-full">
+                      <Button variant="outline" className="w-full border-blue-800 hover:bg-blue-900/20">
+                        Use Tool <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </CardFooter>
+                </Card>
+
+                <Card className="bg-[#111] border-purple-800 hover:border-purple-600 transition-colors">
+                  <CardHeader>
+                    <Users className="h-8 w-8 text-purple-500 mb-2" />
+                    <CardTitle>Executive Persona</CardTitle>
+                    <CardDescription>
+                      Create detailed executive profiles for targeted communications
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-400 mb-4">
+                      Generate communication profiles for executives to craft personalized outreach that resonates with their priorities.
+                    </p>
+                    <code className="block bg-[#0a0a0a] p-3 rounded text-sm font-mono border border-[#222] mt-4">
+                      Create an executive persona for John Smith, CEO at Acme Inc
+                    </code>
+                  </CardContent>
+                  <CardFooter>
+                    <Link href="/chat?tool=executive" className="w-full">
+                      <Button variant="outline" className="w-full border-purple-800 hover:bg-purple-900/20">
+                        Use Tool <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </CardFooter>
+                </Card>
+
+                <Card className="bg-[#111] border-green-800 hover:border-green-600 transition-colors">
+                  <CardHeader>
+                    <Target className="h-8 w-8 text-green-500 mb-2" />
+                    <CardTitle>Contextual Deal Writer</CardTitle>
+                    <CardDescription>
+                      Generate tailored deal proposals based on company and industry
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-400 mb-4">
+                      Create customized deal proposals that address specific pain points and opportunities for any industry or company size.
+                    </p>
+                    <code className="block bg-[#0a0a0a] p-3 rounded text-sm font-mono border border-[#222] mt-4">
+                      Write a deal proposal for TechCorp in the Technology industry
+                    </code>
+                  </CardContent>
+                  <CardFooter>
+                    <Link href="/chat?tool=deal" className="w-full">
+                      <Button variant="outline" className="w-full border-green-800 hover:bg-green-900/20">
+                        Use Tool <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </CardFooter>
+                </Card>
+              </div>
+            </section>
+
+            <section className="mt-20 text-center">
+              <h2 className="text-3xl font-bold mb-6">Get Started Now</h2>
+              <p className="text-gray-400 max-w-2xl mx-auto mb-8">
+                Start a conversation with our AI assistant and use specialized tools to power up your marketing and sales efforts.
+              </p>
+              <Link href="/chat">
+                <Button size="lg" className="px-8">
+                  Open Chat Interface
+                </Button>
+              </Link>
+            </section>
+          </main>
+
+          <footer className="py-10 border-t border-[#222] mt-20">
+            <div className="container mx-auto px-4 text-center text-gray-500">
+              <p>Deliver AI Assistant © 2024 | Powered by advanced AI tools for marketing and sales</p>
+            </div>
+          </footer>
         </div>
       );
     } else if (activeSection === 'pollinations-assistant') {

@@ -72,7 +72,6 @@ export default function ToolResultsLibrary() {
           className="h-9"
         />
       </div>
-      
       {filteredResults.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
           <p>No tool results found. Use specialized tools in chat to generate results.</p>
@@ -99,7 +98,7 @@ export default function ToolResultsLibrary() {
                 <p className="text-sm text-gray-700 line-clamp-2">{result.summary}</p>
               </CardContent>
               <CardFooter className="flex justify-between pt-1">
-                <Link href={`/shared/tool-result/${result.id}`} passHref>
+                <Link href={`/shared/tool-result/${result.id}`} passHref legacyBehavior>
                   <Button variant="outline" size="sm" className="text-xs">
                     <ExternalLink className="h-3 w-3 mr-1" />
                     View Details

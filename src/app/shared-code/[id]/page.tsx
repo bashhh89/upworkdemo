@@ -396,7 +396,10 @@ export default function SharedCodePage() {
             The code snippet you're looking for doesn't exist or is no longer available.
             Shared code snippets are stored in your browser's local storage and aren't available across different devices.
           </p>
-          <Link href="/" className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-700 transition-colors inline-flex items-center">
+          <Link
+            href="/"
+            className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-700 transition-colors inline-flex items-center"
+            legacyBehavior>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Return Home
           </Link>
@@ -409,7 +412,10 @@ export default function SharedCodePage() {
     <div className="flex flex-col min-h-screen bg-[#0a0a0a]">
       <header className="border-b border-[#333] p-4">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <Link href="/" className="text-white hover:text-blue-400 flex items-center">
+          <Link
+            href="/"
+            className="text-white hover:text-blue-400 flex items-center"
+            legacyBehavior>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to App
           </Link>
@@ -451,7 +457,6 @@ export default function SharedCodePage() {
           </div>
         </div>
       </header>
-      
       {artifact && (
         <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full p-4">
           <div className="mb-6">
