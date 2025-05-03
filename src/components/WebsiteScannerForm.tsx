@@ -56,9 +56,38 @@ export default function WebsiteScannerForm({
     setIsSubmitting(true);
     
     try {
+      // Call the API endpoint directly with the URL
+      const response = await fetch('/api/tools/website-scanner', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: urlToSubmit }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to scan website');
+      }
+      
+      const data = await response.json();
+      
+      // Store the result in localStorage for sharing
+      try {
+        const existingResults = localStorage.getItem('toolResults');
+        const resultsArray = existingResults ? JSON.parse(existingResults) : [];
+        resultsArray.unshift(data); // Add new result at the beginning
+        localStorage.setItem('toolResults', JSON.stringify(resultsArray));
+      } catch (err) {
+        console.error('Error saving result to localStorage', err);
+      }
+      
       onSubmit({ url: urlToSubmit });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error analyzing website:', error);
+      
+      // Show error in UI
+      setUrlError(error.message || 'Failed to analyze the website. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

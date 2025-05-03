@@ -98,7 +98,7 @@ export default function ToolResultsLibrary() {
                 <p className="text-sm text-gray-700 line-clamp-2">{result.summary}</p>
               </CardContent>
               <CardFooter className="flex justify-between pt-1">
-                <Link href={`/shared/tool-result/${result.id}`} passHref legacyBehavior>
+                <Link href={`/shared/tool-result/${result.id}`}>
                   <Button variant="outline" size="sm" className="text-xs">
                     <ExternalLink className="h-3 w-3 mr-1" />
                     View Details

@@ -40,9 +40,26 @@ const navGroups: NavGroup[] = [
     name: 'Navigation',
     items: [
       {
-        name: 'Home',
-        id: 'home',
-        icon: Home
+        name: 'Dashboard',
+        id: 'dashboard',
+        icon: Layers,
+        subItems: [
+          {
+            name: 'Overview',
+            id: 'home',
+            icon: Home
+          },
+          {
+            name: 'Recent Projects',
+            id: 'recent',
+            icon: ClipboardList
+          },
+          {
+            name: 'Saved Items',
+            id: 'saved',
+            icon: BookOpen
+          }
+        ]
       },
       {
         name: 'Chat',
@@ -52,6 +69,13 @@ const navGroups: NavGroup[] = [
         subItems: [
           // Removing "All Threads" sub-item
         ]
+      },
+      {
+        name: 'AI Agent Studio',
+        id: 'agent-studio',
+        icon: Sparkles,
+        status: 'fully',
+        externalLink: '/agent-studio'
       }
     ]
   },
@@ -332,11 +356,10 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
        </div>
     );
 
-
     if (item.externalLink) {
       return (
         <div key={item.id} className={cn("space-y-1", isSubItem ? (isExpanded ? "ml-6 mt-1" : "") : "")}>
-          <Link href={item.externalLink} className={buttonClasses} legacyBehavior>
+          <Link href={item.externalLink} className={buttonClasses}>
             {itemContent}
           </Link>
         </div>

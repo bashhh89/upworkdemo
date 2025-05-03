@@ -2,14 +2,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from "@/lib/utils";
-import { Send, Plus, RefreshCw, ChevronDown, ChevronUp, Copy, Check, Search, X, MessageSquare, Trash2, Clipboard, Play, Maximize, Minimize, Save, ExternalLink, Bookmark, BookmarkCheck, Users, Target, Globe, Mail, Info, Wrench, Building } from 'lucide-react';
+import { Send, Plus, RefreshCw, ChevronDown, ChevronUp, Copy, Check, Search, X, MessageSquare, Trash2, Clipboard, Play, Maximize, Minimize, Save, ExternalLink, Bookmark, BookmarkCheck, Users, Target, Globe, Mail, Info, Wrench, Building, Book } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card"; // Added Card and CardContent import
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { 
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -17,6 +17,9 @@ import {
 } from "@/components/ui/tooltip";
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from "@/components/ui/use-toast";
+import { useSearchParams } from 'next/navigation'; // Add this for URL parameter handling
+import { detectToolRequest, extractParametersFromMessage, hasAllRequiredParameters, availableTools } from '@/lib/tool-utils';
+import { ToolDefinition } from '@/types/tools'; // Import type definition
 
 interface Message {
   role: 'user' | 'assistant';
@@ -24,6 +27,7 @@ interface Message {
   model?: string;
   thinking?: string;
   toolResult?: ToolResult; // Add this line
+  id?: string; // Add this line
 }
 
 interface Thread {
@@ -72,8 +76,10 @@ export default function ChatSection() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [modelSearch, setModelSearch] = useState('');
   const [threadNameInput, setThreadNameInput] = useState('');
+  // Add ref for textarea
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Define initial Pollinations models with state
   const [pollinationsModels, setPollinationsModels] = useState<Model[]>([
-    { id: "openai", name: "OpenAI", description: "GPT-4o-mini - Balanced, reliable model for general tasks" },
     { id: "openai-large", name: "OpenAI Large", description: "GPT-4o - More powerful OpenAI model with enhanced capabilities" },
     { id: "gemini", name: "Gemini", description: "Google's advanced language model with strong reasoning capabilities" },
     { id: "mistral", name: "Mistral", description: "Fast and efficient language model with good reasoning" },
@@ -97,7 +103,13 @@ export default function ChatSection() {
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const threadsDropdownRef = useRef<HTMLDivElement>(null);
+  const libraryDropdownRef = useRef<HTMLDivElement>(null);
+  const toolResultsDropdownRef = useRef<HTMLDivElement>(null);
   const [threadDropdownOpen, setThreadDropdownOpen] = useState(false);
+  const [threadsDropdownOpen, setThreadsDropdownOpen] = useState(false);
+  const [libraryDropdownOpen, setLibraryDropdownOpen] = useState(false);
+  const [toolResultsDropdownOpen, setToolResultsDropdownOpen] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
   const [expandedThinking, setExpandedThinking] = useState<string[]>([]);
   const [codePreview, setCodePreview] = useState<{code: string, language: string, id?: string} | null>(null);
@@ -108,85 +120,19 @@ export default function ChatSection() {
   const [showToolResultsLibrary, setShowToolResultsLibrary] = useState(false);
   const [artifactTitle, setArtifactTitle] = useState('');
   const [artifactDescription, setArtifactDescription] = useState('');
-  
-  // State for AI generated title, description, and prompt
-  const [aiArtifactTitle, setAiArtifactTitle] = useState<string | null>(null);
-  const [aiArtifactDescription, setAiArtifactDescription] = useState<string | null>(null);
-  const [aiPromptUsed, setAiPromptUsed] = useState<string | null>(null);
-  const [isLoadingAISuggestions, setIsLoadingAISuggestions] = useState(false); // New loading state
 
   // Always keep auto-preview enabled since we removed the toggle
   const autoPreviewEnabled = true;
-  
+
   const [isSavingArtifact, setIsSavingArtifact] = useState(false);
-
-  // Function to generate artifact metadata using AI
-  const generateArtifactMetadata = async (code: string, language: string) => {
-    const prompt = `Analyze the following ${language} code snippet and generate a concise title (under 10 words) and a brief description (under 30 words) for it.
-
-Return the response as a JSON object with 'title' and 'description' keys.
-
-Code Snippet:
-\`\`\`${language}
-${code}
-\`\`\`
-`;
-
-    setAiPromptUsed(prompt);
-    setIsLoadingAISuggestions(true); // Start loading
-
-    try {
-      // Call the new API route for AI suggestions
-      const response = await fetch('/api/ai/suggest-snippet-details', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ codeSnippet: code }),
-        // Optional: Add a timeout
-        // signal: AbortSignal.timeout(30000) // 30 second timeout
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error fetching AI suggestions:', response.status, errorText);
-        throw new Error(`Error fetching AI suggestions: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // Update state with actual AI suggestions
-      setAiArtifactTitle(data.title || null); // Use null if title is empty
-      setAiArtifactDescription(data.description || null); // Use null if description is empty
-
-    } catch (error) {
-      console.error("Error generating artifact metadata:", error);
-      setAiArtifactTitle("Error fetching title");
-      setAiArtifactDescription("Error fetching description");
-      // setAiPromptUsed(null); // Keep the prompt even on error for debugging
-    } finally {
-      setIsLoadingAISuggestions(false); // Stop loading
-    }
-  };
 
   // Function to toggle the artifact saving form
   const toggleSavingArtifact = () => {
-    const newState = !isSavingArtifact;
-    setIsSavingArtifact(newState);
-    
-    // Clear current title/description and AI suggestions when closing
-    if (!newState) {
+    setIsSavingArtifact(prev => !prev);
+    // Clear title/description when closing the form
+    if (isSavingArtifact) {
       setArtifactTitle('');
       setArtifactDescription('');
-      setAiArtifactTitle(null);
-      setAiArtifactDescription(null);
-      setAiPromptUsed(null);
-      setIsLoadingAISuggestions(false); // Also clear loading state
-    } else {
-       // If opening the form and codePreview exists, generate metadata
-      if (codePreview && codePreview.code && codePreview.language) {
-         generateArtifactMetadata(codePreview.code, codePreview.language);
-      }
     }
   };
 
@@ -199,19 +145,19 @@ ${code}
         if (!response.ok) {
           throw new Error(`Error fetching models: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
+
         // Process the models data - format may vary based on the API
         const modelsList: Model[] = [];
-        
+
         // Handle case where the API returns an array of strings
         if (Array.isArray(data) && typeof data[0] === 'string') {
           data.forEach((modelId: string) => {
             if (modelId !== 'openai-audio') { // Skip audio model
               // Find if we already have a description for this model
               const existingModel = pollinationsModels.find(m => m.id === modelId);
-              
+
               if (existingModel) {
                 modelsList.push(existingModel);
               } else {
@@ -219,7 +165,7 @@ ${code}
                   .split('-')
                   .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                   .join(' ');
-                
+
                 modelsList.push({
                   id: modelId,
                   name: displayName,
@@ -228,22 +174,19 @@ ${code}
               }
             }
           });
-        } 
+        }
         // Handle case where it returns an object with model details
         else if (typeof data === 'object' && !Array.isArray(data)) {
           Object.entries(data).forEach(([modelId, details]: [string, any]) => {
             if (modelId !== 'openai-audio') { // Skip audio model
               // Find if we already have a description for this model
               const existingModel = pollinationsModels.find(m => m.id === modelId);
-              
+
               if (existingModel) {
                 modelsList.push(existingModel);
               } else {
                 const displayName = modelId
-                  .split('-')
-                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                  .join(' ');
-                
+
                 modelsList.push({
                   id: modelId,
                   name: displayName,
@@ -253,7 +196,7 @@ ${code}
             }
           });
         }
-        
+
         // If we got no models, keep the defaults
         if (modelsList.length > 0) {
           // Ensure the most reliable models are at the top
@@ -270,60 +213,117 @@ ${code}
         setIsLoadingModels(false);
       }
     };
-    
+
     fetchModels();
   }, []);
 
-  // Load threads from localStorage on mount
+  // Fix thread and message persistence
   useEffect(() => {
-    const savedThreads = localStorage.getItem('chatThreads');
-    if (savedThreads) {
+    const loadFromLocalStorage = () => {
       try {
-        const parsedThreads = JSON.parse(savedThreads).map((thread: any) => ({
-          ...thread,
-          lastUpdated: new Date(thread.lastUpdated)
-        }));
-        setThreads(parsedThreads);
-        
-        // Load last active thread if exists
-        const lastActiveId = localStorage.getItem('activeThreadId');
-        if (lastActiveId && parsedThreads.some(t => t.id === lastActiveId)) {
-          setActiveThreadId(lastActiveId);
-          const activeThread = parsedThreads.find(t => t.id === lastActiveId);
-          if (activeThread) {
-            setMessages(activeThread.messages);
+        // First load stored threads
+        const savedThreads = localStorage.getItem('chatThreads');
+        if (savedThreads) {
+          const parsedThreads = JSON.parse(savedThreads).map((thread: any) => ({
+            ...thread,
+            lastUpdated: new Date(thread.lastUpdated)
+          }));
+          setThreads(parsedThreads);
+          console.log(`Loaded ${parsedThreads.length} threads from localStorage`);
+
+          // Then load active thread ID
+          const lastActiveId = localStorage.getItem('activeThreadId');
+          if (lastActiveId && parsedThreads.some(t => t.id === lastActiveId)) {
+            setActiveThreadId(lastActiveId);
+            console.log(`Restored active thread: ${lastActiveId}`);
+            
+            // Find and load messages for active thread
+            const activeThread = parsedThreads.find(t => t.id === lastActiveId);
+            if (activeThread && activeThread.messages) {
+              setMessages(activeThread.messages);
+              console.log(`Loaded ${activeThread.messages.length} messages for active thread`);
+            } else {
+              // If no active thread exists, create one
+              createNewThread();
+            }
+          } else if (parsedThreads.length > 0) {
+            // If no active thread ID, use most recent thread
+            const mostRecentThread = parsedThreads.sort((a, b) => 
+              new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
+            )[0];
+            
+            setActiveThreadId(mostRecentThread.id);
+            setMessages(mostRecentThread.messages);
+            console.log(`No active thread found, using most recent: ${mostRecentThread.id}`);
+          } else {
+            // If no threads at all, create a new one
+            createNewThread();
           }
+        } else {
+          // No saved threads, create a new thread
+          createNewThread();
         }
       } catch (error) {
-        console.error('Error loading saved threads:', error);
-        setThreads([]);
+        console.error('Error loading saved conversations:', error);
+        // On error, create a new thread
+        createNewThread();
       }
-    }
+    };
+
+    loadFromLocalStorage();
   }, []);
 
-  // Save threads to localStorage when they change
+  // Fix how threads are saved to localStorage whenever they change
   useEffect(() => {
     if (threads.length > 0) {
+      // Save all threads to localStorage
       localStorage.setItem('chatThreads', JSON.stringify(threads));
-    }
-    
-    if (activeThreadId) {
-      localStorage.setItem('activeThreadId', activeThreadId);
+      console.log(`Saved ${threads.length} threads to localStorage`);
+
+      // Save active thread ID
+      if (activeThreadId) {
+        localStorage.setItem('activeThreadId', activeThreadId);
+      }
     }
   }, [threads, activeThreadId]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      // Close model dropdown if clicking outside
+      if (modelDropdownOpen && 
+          dropdownRef.current && 
+          !dropdownRef.current.contains(event.target as Node)) {
         setModelDropdownOpen(false);
       }
+      
+      // Close threads dropdown if clicking outside
+      if (threadsDropdownOpen && 
+          threadsDropdownRef.current && 
+          !threadsDropdownRef.current.contains(event.target as Node)) {
+        setThreadsDropdownOpen(false);
+      }
+      
+      // Close library dropdown if clicking outside
+      if (libraryDropdownOpen && 
+          libraryDropdownRef.current && 
+          !libraryDropdownRef.current.contains(event.target as Node)) {
+        setLibraryDropdownOpen(false);
+      }
+      
+      // Close tool results dropdown if clicking outside
+      if (toolResultsDropdownOpen && 
+          toolResultsDropdownRef.current && 
+          !toolResultsDropdownRef.current.contains(event.target as Node)) {
+        setToolResultsDropdownOpen(false);
+      }
     }
+    
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, []);
+  }, [modelDropdownOpen, threadsDropdownOpen, libraryDropdownOpen, toolResultsDropdownOpen]);
 
   // Scroll to bottom of messages
   useEffect(() => {
@@ -388,7 +388,7 @@ ${code}
   const executeSpecializedTool = async (toolName: string, params: any) => {
     // Create user message for the tool request
     let userMessage = '';
-    
+
     switch (toolName) {
       case 'Website Intelligence':
         userMessage = `Analyze website: ${params.url}`;
@@ -402,18 +402,18 @@ ${code}
       default:
         userMessage = `Use ${toolName} with parameters: ${JSON.stringify(params)}`;
     }
-    
+
     // Add user message to chat
     const userMessageObj: Message = { role: 'user', content: userMessage };
     const updatedMessages: Message[] = [...messages, userMessageObj];
     setMessages(updatedMessages);
     setIsLoading(true);
-    
+
     try {
       // Execute the appropriate tool
       let result: ToolResult;
       const resultId = uuidv4();
-      
+
       switch (toolName) {
         case 'Website Intelligence':
           // Call the website intelligence API
@@ -424,13 +424,13 @@ ${code}
             },
             body: JSON.stringify({ url: params.url })
           });
-          
+
           if (!response.ok) {
             throw new Error(`Error scanning website: ${response.statusText}`);
           }
-          
+
           const data = await response.json();
-          
+
           // Create a tool result
           result = {
             id: resultId,
@@ -442,7 +442,7 @@ ${code}
             shareUrl: `/shared/tool-result/${resultId}`
           };
           break;
-          
+
         case 'Executive Persona':
           // Similar implementation for Executive Persona
           // This would call the appropriate API endpoint
@@ -460,68 +460,101 @@ ${code}
             shareUrl: `/shared/tool-result/${resultId}`
           };
           break;
-          
+
         // Add other tool cases as needed
-          
+
         default:
           throw new Error(`Unsupported tool: ${toolName}`);
       }
-      
+
       // Save the tool result
       setSavedToolResults(prev => [result, ...prev]);
-      
+
       // Create assistant message with the result
       const assistantMessage: Message = {
         role: 'assistant',
         content: `I've analyzed this using our **${toolName}** tool.\n\n**Summary:** ${result.summary}\n\n[View Full Analysis](${result.shareUrl})\n\nWould you like me to explain specific aspects of this analysis?`,
         toolResult: result // Add the tool result to the message for reference
       };
-      
+
       const finalMessages = [...updatedMessages, assistantMessage];
       setMessages(finalMessages);
-      
+
       // Update thread with the messages
       if (activeThreadId) {
         updateThreadMessages(activeThreadId, finalMessages);
       }
-      
+
       return result;
     } catch (error) {
       console.error(`Error executing ${toolName}:`, error);
-      
+
       // Add error message to chat
       const errorMessage: Message = {
         role: 'assistant',
         content: `Sorry, there was an error executing the ${toolName} tool: ${(error as Error).message}`
       };
-      
+
       const finalMessages = [...updatedMessages, errorMessage];
       setMessages(finalMessages);
-      
+
       // Update thread with error message
       if (activeThreadId) {
         updateThreadMessages(activeThreadId, finalMessages);
       }
-      
+
       return null;
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   // State for handling interactive tool parameter input
-  const [pendingTool, setPendingTool] = useState<{ 
-    toolName: string, 
+  const [pendingTool, setPendingTool] = useState<{
+    toolName: string,
     params: Record<string, string>,
-    requiredParams: string[] 
+    requiredParams: string[]
   } | null>(null);
 
   // Function to detect and execute tools based on user input
   const detectAndExecuteTool = async (input: string) => {
+    const detectedTool = detectToolRequest(input);
+
+    if (detectedTool) {
+      // Extract parameters from the message
+      const extractedParams = extractParametersFromMessage(input, detectedTool);
+
+      // Check if all required parameters are present
+      const hasAllParams = hasAllRequiredParameters(extractedParams, detectedTool);
+
+      if (hasAllParams) {
+        // All parameters provided, proceed with tool execution
+        return await executeSpecializedTool(detectedTool.name, extractedParams);
+      } else {
+        // Missing parameters, prompt user with form
+        // Add a system message explaining parameter collection
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `I'll help you with that. Let me gather the necessary information for the ${detectedTool.name} tool.`
+        }]);
+
+        // Set up tool request for parameter collection
+        setPendingToolRequest({
+          tool: detectedTool,
+          params: extractedParams,
+          originalMessage: input
+        });
+
+        return true; // Tool handling in progress
+      }
+    }
+
+    // Fall back to regex pattern matching approach for backward compatibility
+
     // Website Intelligence detection
     const websiteRegex = /analyze\s+(website|site|url|domain)?:?\s*(https?:\/\/[^\s]+)?/i;
     const websiteMatch = input.match(websiteRegex);
-    
+
     if (websiteMatch) {
       // If URL is provided, execute immediately
       if (websiteMatch[2]) {
@@ -533,19 +566,19 @@ ${code}
           params: {},
           requiredParams: ['url']
         });
-        return null;
+        return true;
       }
     }
-    
+
     // Executive Persona detection
     const personaRegex = /create\s+(an?\s+)?(executive|leader|cxo)\s+persona\s+for\s+a?\s+([^]+?)\s+in\s+([^]+?)(?:\.|$)/i;
     const personaMatch = input.match(personaRegex);
-    
+
     if (personaMatch) {
       if (personaMatch[3] && personaMatch[4]) {
-        return executeSpecializedTool('Executive Persona', { 
-          role: personaMatch[3].trim(), 
-          industry: personaMatch[4].trim() 
+        return executeSpecializedTool('Executive Persona', {
+          role: personaMatch[3].trim(),
+          industry: personaMatch[4].trim()
         });
       } else {
         // Set pending tool to collect role and industry parameters
@@ -554,17 +587,17 @@ ${code}
           params: {},
           requiredParams: ['role', 'industry']
         });
-        return null;
+        return true;
       }
     }
-    
+
     // Customer Profile detection
     const profileRegex = /generate\s+(a\s+)?(customer|client|buyer)\s+profile\s+for\s+([^]+?)(?:\.|$)/i;
     const profileMatch = input.match(profileRegex);
-    
+
     if (profileMatch) {
       if (profileMatch[3]) {
-        return executeSpecializedTool('Customer Profile', { 
+        return executeSpecializedTool('Customer Profile', {
           product: profileMatch[3].trim()
         });
       } else {
@@ -574,140 +607,105 @@ ${code}
           params: {},
           requiredParams: ['product']
         });
-        return null;
+        return true;
       }
     }
-    
+
     // No tool detected
-    return null;
+    return false;
   };
-  
+
   // Function to render tool parameter form
   const renderToolParamForm = () => {
-    if (!pendingTool) return null;
-    
+    if (!pendingToolRequest || !pendingToolRequest.tool) return null;
+
+    const { tool, params } = pendingToolRequest;
+
     const handleParamSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      executeSpecializedTool(pendingTool.toolName, pendingTool.params);
-      setPendingTool(null);
+      // Execute tool with collected parameters
+      executeSpecializedTool(tool.name, params).then(() => {
+        // Clear pending tool request after execution
+        setPendingToolRequest(null);
+      });
     };
-    
-    const updateParam = (param: string, value: string) => {
-      setPendingTool(prev => prev ? {
-        ...prev,
+
+    const updateParam = (paramName: string, value: string) => {
+      setPendingToolRequest({
+        ...pendingToolRequest,
         params: {
-          ...prev.params,
-          [param]: value
+          ...pendingToolRequest.params,
+          [paramName]: value
         }
-      } : null);
+      });
     };
-    
-    // Get placeholder and label based on tool and parameter
-    const getParamInfo = (toolName: string, param: string) => {
-      switch (toolName) {
-        case 'Website Intelligence':
-          if (param === 'url') return {
-            label: 'Website URL',
-            placeholder: 'https://example.com',
-            icon: <Globe className="h-4 w-4 text-blue-500" />
-          };
-          break;
-        case 'Executive Persona':
-          if (param === 'role') return {
-            label: 'Executive Role',
-            placeholder: 'CEO, CTO, CFO, CMO, etc.',
-            icon: <Users className="h-4 w-4 text-purple-500" />
-          };
-          if (param === 'industry') return {
-            label: 'Industry',
-            placeholder: 'SaaS, Fintech, Healthcare, etc.',
-            icon: <Building className="h-4 w-4 text-purple-500" />
-          };
-          break;
-        case 'Customer Profile':
-          if (param === 'product') return {
-            label: 'Product or Service',
-            placeholder: 'B2B Marketing Software, etc.',
-            icon: <Target className="h-4 w-4 text-green-500" />
-          };
-          break;
-      }
-      return { 
-        label: param.charAt(0).toUpperCase() + param.slice(1),
-        placeholder: `Enter ${param}`,
-        icon: <Info className="h-4 w-4 text-gray-500" />
-      };
-    };
-    
+
     return (
-      <div className="py-4 px-6 bg-[#111] border border-[#333] rounded-lg mb-6 animate-in fade-in duration-300">
-        <h3 className="text-white text-md font-medium mb-4 flex items-center">
-          <Wrench className="h-5 w-5 mr-2 text-blue-500" />
-          Configure <span className="text-blue-400 mx-1">{pendingTool.toolName}</span> Parameters
-        </h3>
-        
-        <form onSubmit={handleParamSubmit}>
-          <div className="space-y-4">
-            {pendingTool.requiredParams.map(param => {
-              const { label, placeholder, icon } = getParamInfo(pendingTool.toolName, param);
-              return (
-                <div key={param} className="space-y-2">
-                  <label className="text-sm text-gray-300">{label}:</label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                      {icon}
-                    </div>
-                    <input
-                      type="text"
-                      value={pendingTool.params[param] || ''}
-                      onChange={(e) => updateParam(param, e.target.value)}
-                      placeholder={placeholder}
-                      className="w-full px-10 py-2 bg-[#0a0a0a] border border-[#333] rounded text-white focus:outline-none focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          
-          <div className="flex justify-end space-x-3 mt-4">
-            <Button 
-              type="button"
-              variant="outline" 
-              size="sm"
-              onClick={() => setPendingTool(null)}
-              className="text-gray-300 hover:text-white"
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit"
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Run Analysis
-            </Button>
-          </div>
-        </form>
-      </div>
+      <Card className="w-full border border-gray-600 p-4 my-4 bg-gray-900 text-white rounded-lg">
+        <CardContent className="p-0">
+          <h3 className="text-lg font-semibold mb-2">{tool.name}</h3>
+          <p className="text-sm mb-4 text-gray-400">{tool.description}</p>
+
+          <form onSubmit={handleParamSubmit} className="space-y-4">
+            {tool.requiredParameters.map((param) => (
+              <div key={param.name} className="space-y-2">
+                <label className="block text-sm font-medium">{param.label}</label>
+
+                {param.type === 'select' ? (
+                  <select
+                    value={params[param.name] || ''}
+                    onChange={(e) => updateParam(param.name, e.target.value)}
+                    className="bg-gray-800 border border-gray-600 rounded-md w-full p-2 text-white"
+                    required={param.required !== false}
+                  >
+                    <option value="">Select {param.label}</option>
+                    {param.options?.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type={param.type}
+                    value={params[param.name] || ''}
+                    onChange={(e) => updateParam(param.name, e.target.value)}
+                    placeholder={param.placeholder}
+                    className="bg-gray-800 border border-gray-600 rounded-md w-full p-2 text-white"
+                    required={param.required !== false}
+                  />
+                )}
+              </div>
+            ))}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPendingToolRequest(null)}
+                className="border-gray-600 text-white hover:bg-gray-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-blue-600 text-white hover:bg-blue-700"
+              >
+                Run {tool.name}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     );
   };
 
   // Sample suggestions
-  const suggestions = [
-    "Analyze website: example.com and identify key improvement opportunities",
-    "Create an executive persona for a SaaS company CEO in the fintech industry",
-    "Generate a customer profile for my B2B marketing automation software",
-    "Analyze website: competitor-site.com and extract key competitor data",
-    "Write an outreach email template for cold contacting CMOs about our AI solution"
-  ];
+  const suggestions = [];
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
   };
-  
+
   // Add function to copy an entire message
   const handleCopyMessage = (message: string) => {
     navigator.clipboard.writeText(message);
@@ -717,29 +715,47 @@ ${code}
 
   // Update thread with new messages
   const updateThreadMessages = (threadId: string, newMessages: Message[]) => {
-    setThreads(prev => prev.map(thread => 
+    // Update in-memory state
+    setThreads(prev => prev.map(thread =>
       thread.id === threadId
         ? { ...thread, messages: newMessages, lastUpdated: new Date() }
         : thread
     ));
+    
+    // Also update localStorage directly to ensure persistence
+    try {
+      const threadsJson = localStorage.getItem('chatThreads');
+      if (threadsJson) {
+        const threads = JSON.parse(threadsJson);
+        const updatedThreads = threads.map((thread: any) => 
+          thread.id === threadId
+            ? { ...thread, messages: newMessages, lastUpdated: new Date() }
+            : thread
+        );
+        localStorage.setItem('chatThreads', JSON.stringify(updatedThreads));
+        console.log(`Updated thread ${threadId} with ${newMessages.length} messages in localStorage`);
+      }
+    } catch (error) {
+      console.error('Error updating thread in localStorage:', error);
+    }
   };
 
   // Get thread name from first message or default
   const getThreadNameFromMessages = (msgs: Message[]): string => {
     if (msgs.length === 0) return "New thread";
-    
+
     const firstUserMsg = msgs.find(m => m.role === "user");
     if (!firstUserMsg) return "New thread";
-    
+
     const content = firstUserMsg.content.trim();
     return content.length > 30 ? content.substring(0, 27) + "..." : content;
   };
 
   // Function to toggle thinking section expansion
   const toggleThinking = (messageId: string) => {
-    setExpandedThinking(prev => 
-      prev.includes(messageId) 
-        ? prev.filter(id => id !== messageId) 
+    setExpandedThinking(prev =>
+      prev.includes(messageId)
+        ? prev.filter(id => id !== messageId)
         : [...prev, messageId]
     );
   };
@@ -757,7 +773,7 @@ ${code}
       const response = content.replace(/<think>[\s\S]*?<\/think>/, '').trim();
       return { thinking, response };
     }
-    
+
     // For models that don't use tags but include reasoning (gemini, openai-large, mistral)
     // Look for common reasoning patterns in the response
     const reasoningPatterns = [
@@ -768,14 +784,14 @@ ${code}
       // Match "I'll" sections that indicate starting the reasoning process
       /(?:I'll|I will)(?:\s+first|\s+now|\s+analyze|\s+break down|\s+solve|\s+tackle)([^]*?)(?:Therefore|In conclusion|So,|To summarize|Final answer)/i
     ];
-    
+
     // Try to find reasoning section using the patterns
     for (const pattern of reasoningPatterns) {
       const match = content.match(pattern);
       if (match && match[1] && match[1].length > 50) { // Ensure the match is substantial
         const reasoning = match[1].trim();
         const finalAnswer = content.substring(content.indexOf(match[0]) + match[0].length).trim();
-        
+
         // Only extract if we have both parts
         if (reasoning && finalAnswer) {
           return {
@@ -785,26 +801,26 @@ ${code}
         }
       }
     }
-    
+
     // If no pattern matches, check if response is long and might contain reasoning
     if (content.length > 300) {
       const lines = content.split('\n');
       const responseThird = Math.floor(lines.length / 3);
-      
+
       // Take the first 1/3 of the response as potential reasoning if it's substantial
       if (responseThird > 2) {
         const thinking = lines.slice(0, responseThird).join('\n').trim();
         const response = lines.slice(responseThird).join('\n').trim();
-        
+
         // Only return split content if thinking section looks like reasoning
-        if (thinking.includes('let me') || thinking.includes('I think') || 
+        if (thinking.includes('let me') || thinking.includes('I think') ||
             thinking.includes('step') || thinking.includes('approach') ||
             thinking.includes('analyze') || thinking.includes('consider')) {
           return { thinking, response };
         }
       }
     }
-    
+
     // Default case: no thinking section detected
     return { thinking: '', response: content };
   };
@@ -815,14 +831,14 @@ ${code}
     const match = /language-(\w+)/.exec(className);
     return match ? match[1] : 'text';
   };
-  
+
   // Check if code is HTML
   const isHTML = (code: string): boolean => {
-    return code.trim().startsWith('<') && 
-           (code.includes('<html') || code.includes('<body') || 
+    return code.trim().startsWith('<') &&
+           (code.includes('<html') || code.includes('<body') ||
             code.includes('<div') || code.includes('<head'));
   };
-  
+
   // Check if code is CSS
   const isCSS = (code: string): boolean => {
     const cssPatterns = [
@@ -831,17 +847,17 @@ ${code}
     ];
     return cssPatterns.some(pattern => pattern.test(code));
   };
-  
+
   // Generate a share URL for an artifact
   const getShareUrl = (artifactId: string) => {
     const baseUrl = window.location.origin;
     return `${baseUrl}/shared-code/${artifactId}`;
   };
-  
+
   // Add notification when share link is copied - create a completely revised toast system
   const copyShareLink = (url: string) => {
     navigator.clipboard.writeText(url);
-    
+
     // Create a simple notification element that will self-dismiss
     const notification = document.createElement('div');
     notification.className = 'fixed bottom-4 right-4 bg-black border border-gray-700 text-white px-4 py-3 rounded shadow-lg z-[9999] flex items-center gap-3';
@@ -857,7 +873,7 @@ ${code}
         </svg>
       </button>
     `;
-    
+
     // Add the close button functionality
     const closeButton = notification.querySelector('button');
     if (closeButton) {
@@ -865,10 +881,10 @@ ${code}
         document.body.removeChild(notification);
       });
     }
-    
+
     // Add to DOM
     document.body.appendChild(notification);
-    
+
     // Auto dismiss after 3 seconds
     setTimeout(() => {
       if (document.body.contains(notification)) {
@@ -876,7 +892,7 @@ ${code}
       }
     }, 3000);
   };
-  
+
   // Create a more robust notification system
   const showNotification = (title: string, description: string) => {
     // Create a notification element
@@ -894,7 +910,7 @@ ${code}
         </svg>
       </button>
     `;
-    
+
     // Add the close button functionality
     const closeButton = notification.querySelector('button');
     if (closeButton) {
@@ -902,10 +918,10 @@ ${code}
         document.body.removeChild(notification);
       });
     }
-    
+
     // Add to DOM
     document.body.appendChild(notification);
-    
+
     // Auto dismiss after 3 seconds
     setTimeout(() => {
       if (document.body.contains(notification)) {
@@ -916,8 +932,13 @@ ${code}
 
   // Save the current preview as an artifact
   const saveArtifact = () => {
-    if (!codePreview) return;
-    
+    if (!codePreview) {
+      console.error("Attempted to save artifact with no code preview open");
+      return;
+    }
+
+    console.log("Saving artifact:", codePreview);
+
     const artifactId = codePreview.id || uuidv4();
     const newArtifact: CodeArtifact = {
       id: artifactId,
@@ -928,38 +949,46 @@ ${code}
       createdAt: new Date(),
       preview: getShareUrl(artifactId)
     };
-    
+
+    console.log("Creating new artifact:", newArtifact);
+
+    // Make a copy of the current artifacts array
     const updatedArtifacts = [newArtifact, ...savedArtifacts.filter(a => a.id !== artifactId)];
-    setSavedArtifacts(updatedArtifacts);
     
+    // Update state with the new artifact
+    setSavedArtifacts(updatedArtifacts);
+
     // Save to localStorage immediately
     localStorage.setItem('codeArtifacts', JSON.stringify(updatedArtifacts));
-    
+
     setArtifactTitle('');
     setArtifactDescription('');
-    
+
     // Update the preview with the ID
     setCodePreview({...codePreview, id: artifactId});
-    
+
     // Show a toast notification
     showNotification("Code saved!", "Your code snippet has been saved to your library.");
-    
+
     // Copy the share link to clipboard
     copyShareLink(getShareUrl(artifactId));
+    
+    // Debug
+    console.log("Saved artifacts count:", updatedArtifacts.length);
   };
-  
+
   // Delete an artifact
   const deleteArtifact = (id: string) => {
     const updatedArtifacts = savedArtifacts.filter(artifact => artifact.id !== id);
     setSavedArtifacts(updatedArtifacts);
-    
+
     // Update localStorage
     localStorage.setItem('codeArtifacts', JSON.stringify(updatedArtifacts));
-    
+
     // Show notification
     showNotification("Code deleted", "The code snippet has been removed from your library.");
   };
-  
+
   // Load an artifact into the preview
   const loadArtifact = (artifact: CodeArtifact) => {
     setCodePreview({
@@ -969,16 +998,29 @@ ${code}
     });
     setShowLibrary(false);
   };
-  
+
   // Enhanced preview handler with ID generation
   const handleShowPreview = (code: string, language: string) => {
-    console.log(`Displaying preview for ${language} code, length: ${code.length}`);
-    setCodePreview({ 
-      code, 
-      language,
+    // Ensure code and language are valid before setting preview
+    if (!code || typeof code !== 'string') {
+      console.error("Attempted to show preview with invalid code.");
+      return;
+    }
+    const validLanguage = language && typeof language === 'string' ? language : 'text';
+
+    console.log(`Displaying preview for ${validLanguage} code, length: ${code.length}`);
+    setCodePreview({
+      code,
+      language: validLanguage,
       id: uuidv4() // Generate unique ID for each preview
     });
-    
+
+    // Show a subtle notification that code preview opened
+    showNotification(
+      "Code preview opened", 
+      `Previewing ${validLanguage} code snippet. Use the preview button to toggle visibility.`
+    );
+
     // Make sure the UI updates immediately
     setTimeout(() => {
       const previewElement = document.querySelector('[title="Code Preview"]');
@@ -998,12 +1040,7 @@ ${code}
     setArtifactDescription: (description: string) => void;
     saveArtifact: () => void;
     toggleSaving: () => void;
-    language: string; // Pass language for placeholder
-    // New props for AI suggestions
-    aiArtifactTitle: string | null;
-    aiArtifactDescription: string | null;
-    aiPromptUsed: string | null;
-    isLoadingAISuggestions: boolean; // New prop for loading state
+    language?: string; // Make language optional
   }
 
   const ArtifactSaveForm = ({
@@ -1015,25 +1052,12 @@ ${code}
     setArtifactDescription,
     saveArtifact,
     toggleSaving,
-    language,
-    // Destructure new props
-    aiArtifactTitle,
-    aiArtifactDescription,
-    aiPromptUsed,
-    isLoadingAISuggestions // Destructure new prop
+    language = 'code' // Default value for language
   }: ArtifactSaveFormProps) => {
     // Use local state to avoid focus issues with controlled inputs
-    const [localTitle, setLocalTitle] = useState(artifactTitle);
-    const [localDescription, setLocalDescription] = useState(artifactDescription);
-
-    // Update local state when parent state (possibly from AI) changes
-    useEffect(() => {
-      setLocalTitle(artifactTitle);
-    }, [artifactTitle]);
-
-    useEffect(() => {
-      setLocalDescription(artifactDescription);
-    }, [artifactDescription]);
+    // Ensure default empty string in case initial prop is undefined
+    const [localTitle, setLocalTitle] = useState(artifactTitle || '');
+    const [localDescription, setLocalDescription] = useState(artifactDescription || '');
 
     // Update parent state only when input is complete (blur/submit)
     const updateTitle = (value: string) => {
@@ -1045,69 +1069,47 @@ ${code}
       setLocalDescription(value);
       setArtifactDescription(value);
     };
-    
-    // Auto-fill local state with AI suggestions if available when the form opens
-    useEffect(() => {
-      if (isSaving && aiArtifactTitle !== null && artifactTitle === '' && !isLoadingAISuggestions) {
-        setLocalTitle(aiArtifactTitle);
-        setArtifactTitle(aiArtifactTitle); // Also update parent state
-      }
-      if (isSaving && aiArtifactDescription !== null && artifactDescription === '' && !isLoadingAISuggestions) {
-        setLocalDescription(aiArtifactDescription);
-        setArtifactDescription(aiArtifactDescription); // Also update parent state
-      }
-    }, [isSaving, aiArtifactTitle, aiArtifactDescription, artifactTitle, artifactDescription, setArtifactTitle, setArtifactDescription, isLoadingAISuggestions]);
 
+    // Handle local state updates separately from parent state to avoid focus issues
+    useEffect(() => {
+      setLocalTitle(artifactTitle);
+    }, [artifactTitle]);
+
+    useEffect(() => {
+      setLocalDescription(artifactDescription);
+    }, [artifactDescription]);
 
     return (
       <>
         {isSaving && (
           <div className="p-4 border-b border-[#333] bg-[#111] relative z-50">
             <h3 className="text-white text-sm font-medium mb-3">Save this code snippet</h3>
-            {isLoadingAISuggestions && (
-               <p className="text-gray-500 text-xs mb-3 italic">Generating AI suggestions...</p>
-            )}
             <div className="grid gap-3">
               <div>
                 <label className="text-gray-400 text-xs block mb-1">Title</label>
-                {aiArtifactTitle && (
-                  <p className="text-gray-500 text-xs mb-1 italic">AI Suggestion: {aiArtifactTitle}</p>
-                )}
                 <Input
                   value={localTitle}
                   onChange={(e) => setLocalTitle(e.target.value)}
                   onBlur={() => updateTitle(localTitle)}
-                  placeholder={isLoadingAISuggestions ? "Generating..." : `${language.charAt(0).toUpperCase() + language.slice(1)} snippet`}
+                  placeholder={`${language.charAt(0).toUpperCase() + language.slice(1)} snippet`}
                   className="bg-[#0a0a0a] border-[#333] text-white"
-                  disabled={isLoadingAISuggestions}
                 />
               </div>
               <div>
                 <label className="text-gray-400 text-xs block mb-1">Description</label>
-                 {aiArtifactDescription && (
-                  <p className="text-gray-500 text-xs mb-1 italic">AI Suggestion: {aiArtifactDescription}</p>
-                )}
                 <Textarea
                   value={localDescription}
                   onChange={(e) => setLocalDescription(e.target.value)}
                   onBlur={() => updateDescription(localDescription)}
-                  placeholder={isLoadingAISuggestions ? "Generating description..." : "Brief description of this code"}
+                  placeholder="Brief description of this code"
                   className="bg-[#0a0a0a] border-[#333] text-white resize-none h-20"
-                   disabled={isLoadingAISuggestions}
                 />
-                 {!isLoadingAISuggestions && aiPromptUsed && (
-                  <div className="mt-2 text-gray-600 text-xs">
-                    <p className="font-medium mb-1">AI Prompt Used:</p>
-                    <p className="italic whitespace-pre-wrap">{aiPromptUsed}</p>
-                  </div>
-                )}
               </div>
               <div className="flex justify-end gap-2">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => setIsSaving(false)}
-                   disabled={isLoadingAISuggestions}
                 >
                   Cancel
                 </Button>
@@ -1121,7 +1123,6 @@ ${code}
                     saveArtifact();
                     toggleSaving(); // Use the passed-in toggle function
                   }}
-                   disabled={isLoadingAISuggestions || !localTitle.trim() || !localDescription.trim()} // Disable save button while loading or if fields are empty
                 >
                   Save
                 </Button>
@@ -1136,15 +1137,15 @@ ${code}
   // Typing indicator component
   const TypingIndicator = () => {
     const [dots, setDots] = useState(1);
-    
+
     useEffect(() => {
       const interval = setInterval(() => {
         setDots(prev => prev < 3 ? prev + 1 : 1);
       }, 500);
-      
+
       return () => clearInterval(interval);
     }, []);
-    
+
     return (
       <div className="flex justify-start mb-8">
         <div className="relative max-w-[90%] rounded-md bg-[#111111] border border-[#333333] text-white p-5">
@@ -1172,31 +1173,26 @@ ${code}
   const autoPreviewCode = (message: Message) => {
     // Only auto-preview assistant messages
     if (message.role !== 'assistant') return;
-    
+
     // Enhanced regex to catch more code block formats
     const codeBlockRegex = /```(\w+)?\n([\s\S]*?)\n```/g;
     let match;
     let lastCodeBlock = null;
-    let hasHtmlContent = false;
-    
+
     while ((match = codeBlockRegex.exec(message.content)) !== null) {
-      const language = match[1] || 'text';
+      const language = match[1] || 'text'; // Default to 'text' if no language specified
       const code = match[2];
-      
-      // Check if this is HTML content
-      if (language === 'html' || code.trim().startsWith('<') && (code.includes('<html') || code.includes('<body') || code.includes('<div'))) {
-        // HTML content gets priority - show it immediately
-        handleShowPreview(code, 'html');
-        hasHtmlContent = true;
-        break;
+
+      // Validate code 
+      if (code && typeof code === 'string' && code.trim().length > 0) {
+        // Always store the last valid code block found
+        lastCodeBlock = { language, code };
       }
-      
-      // Store the last code block found
-      lastCodeBlock = { language, code };
     }
-    
-    // If HTML wasn't shown but we found other code, show the last code block
-    if (!hasHtmlContent && lastCodeBlock) {
+
+    // If we found any valid code block, show preview for the last one
+    if (lastCodeBlock) {
+      console.log(`Showing preview for ${lastCodeBlock.language} code`);
       handleShowPreview(lastCodeBlock.code, lastCodeBlock.language);
     }
   };
@@ -1204,58 +1200,51 @@ ${code}
   // Modify handleSend to use tools when appropriate
   const handleSend = async () => {
     if (!input.trim()) return;
-    
+
+    // If no active thread, create one
+    if (!activeThreadId) {
+      const newThreadId = createNewThread();
+      console.log('Created new thread before sending message:', newThreadId);
+      // Small delay to ensure thread is created before proceeding
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+
     // First, check if the input should trigger a specialized tool
     const toolResult = await detectAndExecuteTool(input.trim());
-    
+
     // If a tool was executed, no need to call the chat API
     if (toolResult) {
       setInput('');
+      // Focus back on the textarea
+      setTimeout(() => inputRef.current?.focus(), 50);
       return;
     }
-    
+
     // Regular chat flow for non-tool messages
-    // Add user message
-    const userMessage: Message = { role: 'user' as const, content: input };
+    // Add user message with ID
+    const userMessage: Message = { id: uuidv4(), role: 'user' as const, content: input };
     const updatedMessages: Message[] = [...messages, userMessage];
     setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
-    
-    // Create a new thread if none exists
-    if (!activeThreadId) {
-      const newThreadId = Date.now().toString();
-      const newThread: Thread = {
-        id: newThreadId,
-        name: getThreadNameFromMessages([userMessage]),
-        messages: updatedMessages,
-        lastUpdated: new Date()
-      };
-      
-      setThreads(prev => [newThread, ...prev]);
-      setActiveThreadId(newThreadId);
-    } else {
-      // Update existing thread
-      updateThreadMessages(activeThreadId, updatedMessages);
-    }
-    
+
     try {
       // Scroll to bottom to show the typing indicator
       setTimeout(() => {
         endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
-      
+
       // Check if this is likely a code generation request
       const isCodeRequest = /code|create|generate|script|html|css|javascript|function|programming/i.test(input.toLowerCase());
-      
+
       // Check if it's a complex code request (landing pages, complete websites, etc.)
-      const isComplexCodeRequest = isCodeRequest && 
-                                /landing page|website|app|application|complete|full/i.test(input.toLowerCase());
-      
+      const isComplexCodeRequest = isCodeRequest &&
+                                  /landing page|website|app|application|complete|full/i.test(input.toLowerCase());
+
       // Add a timeout for the fetch request
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout for complex code generation
-      
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -1267,87 +1256,91 @@ ${code}
         }),
         signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId); // Clear the timeout if the request completes
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`API response error (${response.status}):`, errorText);
         throw new Error(`Error from API: ${response.status} - ${errorText}`);
       }
-      
+
       const data = await response.json();
-      
+
       // Use the model info returned from the API if available
       const modelUsed = data.model || selectedModel;
-      
+
       // Extract thinking and response content
       const content = data.choices[0].message.content;
       const { thinking, response: cleanedResponse } = extractThinking(content);
-      
-      const assistantMessage: Message = { 
-        role: 'assistant' as const, 
+
+      const assistantMessage: Message = {
+        id: uuidv4(),
+        role: 'assistant' as const,
         content: cleanedResponse,
         thinking: thinking,
         model: modelUsed
       };
-      
+
       const finalMessages = [...updatedMessages, assistantMessage];
       setMessages(finalMessages);
-      
+
       // Always auto-preview responses, with priority for code generation requests
       const forcePreview = isCodeRequest || /code|html|css|javascript/i.test(assistantMessage.content);
       // Always run auto-preview since it's always enabled now
       autoPreviewCode(assistantMessage);
-      
+
       // Update thread with assistant response
       if (activeThreadId) {
         updateThreadMessages(activeThreadId, finalMessages);
-        
+
         // Update thread name if it's the first message
         if (updatedMessages.length === 1) {
-          setThreads(prev => prev.map(thread => 
+          setThreads(prev => prev.map(thread =>
             thread.id === activeThreadId
               ? { ...thread, name: getThreadNameFromMessages([userMessage]) }
               : thread
           ));
         }
       }
-      
+
     } catch (error) {
       console.error('Error sending message:', error);
-      
+
       // Handle abort error specifically
       let errorContent = 'Sorry, there was an error processing your request. ';
-      
+
       if (error.name === 'AbortError') {
-        errorContent += 'The request took too long to complete. For complex generations like landing pages:\n\n' + 
+        errorContent += 'The request took too long to complete. For complex generations like landing pages:\n\n' +
           '1. Break your request into smaller steps\n' +
           '2. Specify the framework you prefer\n' +
           '3. Try again with more specific details about what you want';
       } else if (error.message?.includes('500')) {
-        errorContent += 'The server encountered an internal error. This often happens with complex generation requests. Try the following:\n\n' + 
+        errorContent += 'The server encountered an internal error. This often happens with complex generation requests. Try the following:\n\n' +
           '1. Break your request into smaller, simpler parts\n' +
           '2. Be more specific about what you want';
       } else {
         errorContent += 'The model you selected might be temporarily unavailable. Please try again with a different model.';
       }
-      
-      const errorMessage: Message = { 
-        role: 'assistant' as const, 
+
+      const errorMessage: Message = {
+        id: uuidv4(),
+        role: 'assistant' as const,
         content: errorContent,
         model: 'system'
       };
-      
+
       const finalMessages = [...updatedMessages, errorMessage];
       setMessages(finalMessages);
-      
+
       // Update thread with error message
       if (activeThreadId) {
         updateThreadMessages(activeThreadId, finalMessages);
       }
     } finally {
       setIsLoading(false);
+      // Focus back on the textarea
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   };
 
@@ -1357,13 +1350,33 @@ ${code}
       handleSend();
     }
   };
-  
+
+  // Modify createNewThread to properly initialize a new thread
   const createNewThread = () => {
+    const newThreadId = uuidv4();
+    const newThread = {
+      id: newThreadId,
+      name: 'New conversation',
+      messages: [],
+      lastUpdated: new Date()
+    };
+    
+    // Immediately update the threads state
+    setThreads(prev => [newThread, ...prev]);
+    setActiveThreadId(newThreadId);
     setMessages([]);
-    setActiveThreadId(null);
-    setThreadNameInput('');
+    
+    // Also save directly to localStorage to ensure persistence
+    const existingThreads = localStorage.getItem('chatThreads');
+    const parsedThreads = existingThreads ? JSON.parse(existingThreads) : [];
+    const updatedThreads = [newThread, ...parsedThreads];
+    localStorage.setItem('chatThreads', JSON.stringify(updatedThreads));
+    localStorage.setItem('activeThreadId', newThreadId);
+    
+    console.log(`Created new thread: ${newThreadId}`);
+    return newThreadId;
   };
-  
+
   const selectThread = (threadId: string) => {
     const thread = threads.find(t => t.id === threadId);
     if (thread) {
@@ -1371,21 +1384,21 @@ ${code}
       setActiveThreadId(threadId);
     }
   };
-  
+
   const deleteThread = (threadId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setThreads(prev => prev.filter(thread => thread.id !== threadId));
-    
+
     if (activeThreadId === threadId) {
       setMessages([]);
       setActiveThreadId(null);
     }
   };
-  
+
   const renameThread = (threadId: string, newName: string) => {
     if (!newName.trim()) return;
-    
-    setThreads(prev => prev.map(thread => 
+
+    setThreads(prev => prev.map(thread =>
       thread.id === threadId
         ? { ...thread, name: newName }
         : thread
@@ -1394,10 +1407,10 @@ ${code}
   };
 
   // Filter models based on search
-  const filteredModels = modelSearch.trim() === '' 
-    ? pollinationsModels 
-    : pollinationsModels.filter(model => 
-        model.name.toLowerCase().includes(modelSearch.toLowerCase()) || 
+  const filteredModels = modelSearch.trim() === ''
+    ? pollinationsModels
+    : pollinationsModels.filter(model =>
+        model.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
         model.description.toLowerCase().includes(modelSearch.toLowerCase())
       );
 
@@ -1491,31 +1504,90 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
     ),
     code: ({ node, inline, className, children, ...props }: any) => {
       const match = /language-(\w+)/.exec(className || '');
-      return !inline ? (
-        <div className="relative">
-          <pre className="bg-[#111111] p-4 rounded-md overflow-x-auto my-4 border border-[#333333] relative">
-            <div className="absolute top-2 right-2 z-10">
+      const language = match ? match[1] : 'text';
+      const codeContent = String(children).replace(/\n$/, '');
+      const codeId = useRef(`code-${Math.random().toString(36).substring(2, 9)}`).current;
+      const isExpanded = expandedCodeBlocks.includes(codeId);
+      
+      // For inline code, just return as is
+      if (inline) {
+        return (
+          <code className="bg-[#111111] px-1 py-0.5 rounded font-mono text-sm" {...props}>
+            {children}
+          </code>
+        );
+      }
+      
+      // Get a short description based on code content and language
+      const getCodeDescription = () => {
+        const firstLine = codeContent.split('\n')[0].trim();
+        const fileName = firstLine.startsWith('//') ? firstLine.replace('//', '').trim() : null;
+        
+        if (fileName) return fileName;
+        
+        if (language === 'html') return 'HTML Template';
+        if (language === 'css') return 'CSS Styles';
+        if (language === 'javascript' || language === 'js') return 'JavaScript Code';
+        if (language === 'jsx' || language === 'tsx') return 'React Component';
+        if (language === 'json') return 'JSON Data';
+        
+        // Return language with first letter capitalized
+        return language.charAt(0).toUpperCase() + language.slice(1) + ' Code';
+      };
+      
+      return (
+        <div className="relative my-4 rounded-md overflow-hidden border border-[#333333] bg-[#111111]">
+          {/* Header area with info, buttons and toggle */}
+          <div className="flex items-center justify-between p-2 bg-[#1a1a1a] border-b border-[#333333]">
+            <div className="flex items-center">
+              <span className="text-xs font-medium text-blue-400 mr-2">{language}</span>
+              <span className="text-xs text-gray-400">{getCodeDescription()}</span>
+            </div>
+            
+            <div className="flex space-x-2">
               <button
-                onClick={() => handleCopyCode(String(children).replace(/\n$/, ''))}
+                onClick={() => handleShowPreview(codeContent, language)}
+                className="bg-[#222] hover:bg-[#333] p-1 rounded text-xs flex items-center"
+                aria-label="Preview code"
+              >
+                <Play className="h-3 w-3 mr-1" /> Preview
+              </button>
+              
+              <button
+                onClick={() => handleCopyCode(codeContent)}
                 className="bg-[#222] hover:bg-[#333] p-1 rounded text-xs flex items-center"
                 aria-label="Copy code"
               >
-                {copiedCode === String(children).replace(/\n$/, '') ? (
+                {copiedCode === codeContent ? (
                   <><Check className="h-3 w-3 mr-1" /> Copied</>
                 ) : (
                   <><Copy className="h-3 w-3 mr-1" /> Copy</>
                 )}
               </button>
+              
+              <button
+                onClick={() => toggleCodeBlock(codeId)}
+                className="bg-[#222] hover:bg-[#333] p-1 rounded text-xs flex items-center"
+                aria-label={isExpanded ? "Collapse code" : "Expand code"}
+              >
+                {isExpanded ? (
+                  <><ChevronUp className="h-3 w-3 mr-1" /> Collapse</>
+                ) : (
+                  <><ChevronDown className="h-3 w-3 mr-1" /> Expand</>
+                )}
+              </button>
             </div>
-            <code className={className} {...props}>
-              {children}
-            </code>
-          </pre>
+          </div>
+          
+          {/* Code content - conditionally shown based on expanded state */}
+          <div className={`transition-all duration-200 ease-in-out ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+            <pre className="p-4 overflow-x-auto">
+              <code className={className} {...props}>
+                {children}
+              </code>
+            </pre>
+          </div>
         </div>
-      ) : (
-        <code className="bg-[#111111] px-1 py-0.5 rounded font-mono text-sm" {...props}>
-          {children}
-        </code>
       );
     },
     pre: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -1585,10 +1657,10 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
     const [isFullscreen, setIsFullscreen] = useState(false);
     // Removed: const [isSaving, setIsSaving] = useState(false); // State moved to parent
     const [copied, setCopied] = useState(false);
-    
+
     // Check if this artifact is already saved
     const isSaved = id && savedArtifacts.some(artifact => artifact.id === id);
-    
+
     // Generate appropriate preview content
     const getPreviewContent = () => {
       // For HTML, we need to ensure it includes CSS and JS if possible
@@ -1602,10 +1674,10 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     /* Default styles to make preview look nicer */
-    body { 
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       line-height: 1.5;
-      padding: 20px; 
+      padding: 20px;
       max-width: 1200px;
       margin: 0 auto;
       color: #333;
@@ -1649,7 +1721,7 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
         }
       });
     }
-    
+
     // Run after DOM is loaded
     document.addEventListener('DOMContentLoaded', setupInteractivity);
   </script>
@@ -1695,22 +1767,22 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { 
-      font-family: system-ui, sans-serif; 
-      padding: 20px; 
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 20px;
       max-width: 800px;
       margin: 0 auto;
     }
-    .output { 
-      background: #f5f5f5; 
-      padding: 15px; 
-      border-radius: 6px; 
+    .output {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 6px;
       margin-top: 20px;
       border: 1px solid #e0e0e0;
       min-height: 100px;
     }
-    h1 { 
-      margin-top: 0; 
+    h1 {
+      margin-top: 0;
       color: #333;
       border-bottom: 2px solid #3b82f6;
       padding-bottom: 8px;
@@ -1742,29 +1814,29 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
     <button onclick="runCode()">Run Code Again</button>
     <button onclick="clearOutput()">Clear Output</button>
   </div>
-  
+
   <script>
     const output = document.getElementById('output');
-    
+
     // Redirect console.log to our output div
     const originalLog = console.log;
     console.log = function(...args) {
       originalLog.apply(console, args);
-      output.innerHTML += args.map(arg => 
+      output.innerHTML += args.map(arg =>
         typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
       ).join(' ') + '<br>';
     };
-    
+
     // Error handling
     window.onerror = function(message, source, lineno, colno, error) {
       output.innerHTML += '<span class="error">Error: ' + message + '</span><br>';
       return true;
     };
-    
+
     function clearOutput() {
       output.innerHTML = '';
     }
-    
+
     function runCode() {
       clearOutput();
       try {
@@ -1774,7 +1846,7 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
         output.innerHTML += '<span class="error">Error: ' + error.message + '</span>';
       }
     }
-    
+
     // Initial run
     runCode();
   </script>
@@ -1792,9 +1864,9 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    body { 
-      font-family: system-ui, sans-serif; 
-      padding: 20px; 
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 20px;
       max-width: 800px;
       margin: 0 auto;
     }
@@ -1813,8 +1885,8 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
       border-radius: 4px;
       margin-bottom: 10px;
     }
-    h1 { 
-      margin-top: 0; 
+    h1 {
+      margin-top: 0;
       color: #333;
       border-bottom: 2px solid #3b82f6;
       padding-bottom: 8px;
@@ -1829,7 +1901,7 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
   <script type="text/babel">
     try {
       ${code}
-      
+
       // Default render if no ReactDOM.render is in the code
       if (!${code.includes('ReactDOM.render') || code.includes('createRoot')}) {
         // Check if there's a component named App or a default export
@@ -1838,12 +1910,12 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
         } else if (typeof Component !== 'undefined') {
           ReactDOM.render(<Component />, document.getElementById('root'));
         } else {
-          document.getElementById('error-display').innerHTML = 
+          document.getElementById('error-display').innerHTML =
             '<div class="error">No React component found to render. Name your component "App" or "Component".</div>';
         }
       }
     } catch (error) {
-      document.getElementById('error-display').innerHTML = 
+      document.getElementById('error-display').innerHTML =
         '<div class="error">Error: ' + error.message + '</div>';
     }
   </script>
@@ -1862,16 +1934,16 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
 </html>`;
       }
     };
-    
+
     const previewContent = getPreviewContent();
-    
+
     // Copy the code to clipboard
     const copyCode = () => {
       navigator.clipboard.writeText(code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     };
-    
+
     // Toggle the save form
     const toggleSave = () => {
       if (isSaved) {
@@ -1885,9 +1957,17 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
         toggleSaving(); // Use the passed-in toggle function
       }
     };
-    
+
+    // Clean close function for the preview
+    const closePreview = () => {
+      setCodePreview(null);
+      if(isSaving) {
+        setIsSaving(false);
+      }
+    };
+
     return (
-      <div 
+      <div
         className={cn(
           "fixed right-0 top-0 bottom-0 bg-black/90 z-50 flex flex-col transition-all duration-300 ease-in-out",
           isFullscreen ? "left-0" : "w-[60%] border-l border-[#333]",
@@ -1908,7 +1988,7 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
               </div>
             )}
           </div>
-          
+
           <div className="flex gap-2">
             <Button
               size="sm"
@@ -1931,7 +2011,7 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
                 </>
               )}
             </Button>
-            
+
             <Button
               size="sm"
               variant="outline"
@@ -1950,7 +2030,7 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
                 </>
               )}
             </Button>
-            
+
             <Button
               size="sm"
               variant="outline"
@@ -1969,18 +2049,18 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
                 </>
               )}
             </Button>
-            
+
             <Button
               size="sm"
               variant="outline"
               className="h-8 px-3"
-              onClick={() => setCodePreview(null)}
+              onClick={closePreview}
             >
               Close
             </Button>
           </div>
         </div>
-        
+
         {/* Render the dedicated ArtifactSaveForm component */}
         <ArtifactSaveForm
           isSaving={isSaving}
@@ -1993,7 +2073,7 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
           toggleSaving={toggleSavingArtifact}
           language={language}
         />
-        
+
         <div className="flex-1 bg-white overflow-hidden">
           <iframe
             srcDoc={previewContent}
@@ -2006,36 +2086,42 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
     );
   };
 
-  // Code Library component
+  // Function to completely reset library state and close properly
+  const closeLibrary = () => {
+    setShowLibrary(false);
+    setLibraryDropdownOpen(false);
+  };
+
+  // Code Library component with fixed closing functionality
   const CodeLibrary = () => {
     const [searchTerm, setSearchTerm] = useState('');
-    
+
     // Filter artifacts based on search term
     const filteredArtifacts = searchTerm.trim() === ''
       ? savedArtifacts
-      : savedArtifacts.filter(artifact => 
+      : savedArtifacts.filter(artifact =>
           artifact.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           artifact.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
           artifact.language.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    
+
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-black/90 transition-all duration-300 ease-in-out">
         <div className="flex items-center justify-between p-4 border-b border-[#333333]">
           <div className="text-white font-medium">
             Code Library: <span className="text-blue-400">{savedArtifacts.length} saved snippets</span>
           </div>
-          
-          <Button 
+
+          <Button
             size="sm"
             variant="outline"
             className="h-8 px-3"
-            onClick={() => setShowLibrary(false)}
+            onClick={closeLibrary}
           >
             Close
           </Button>
         </div>
-        
+
         <div className="p-4 border-b border-[#333]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -2047,7 +2133,7 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
               className="w-full px-3 py-2 pl-10 pr-10 bg-[#0a0a0a] border border-[#333] rounded text-white focus:outline-none"
             />
             {searchTerm && (
-              <button 
+              <button
                 onClick={() => setSearchTerm('')}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
               >
@@ -2056,7 +2142,7 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
             )}
           </div>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-4">
           {filteredArtifacts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
@@ -2076,8 +2162,8 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredArtifacts.map(artifact => (
-                <div 
-                  key={artifact.id} 
+                <div
+                  key={artifact.id}
                   className="bg-[#111] border border-[#333] rounded-md overflow-hidden hover:border-blue-500 transition-colors"
                 >
                   <div className="p-4">
@@ -2092,24 +2178,24 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
                       {new Date(artifact.createdAt).toLocaleDateString()} · {artifact.code.length} chars
                     </div>
                   </div>
-                  
+
                   <div className="border-t border-[#222] p-3 flex justify-between">
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       className="h-8 text-gray-400 hover:text-white"
                       onClick={() => loadArtifact(artifact)}
                     >
                       <Play className="h-3.5 w-3.5 mr-1" /> Preview
                     </Button>
-                    
+
                     <div className="flex gap-1">
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               className="h-8 px-2 text-gray-400 hover:text-white"
                               onClick={() => {
                                 if (artifact.preview) {
@@ -2125,13 +2211,13 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      
+
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               className="h-8 px-2 text-gray-400 hover:text-white"
                               onClick={() => navigator.clipboard.writeText(artifact.code)}
                             >
@@ -2143,13 +2229,13 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      
+
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               className="h-8 px-2 text-red-400 hover:text-red-300"
                               onClick={() => deleteArtifact(artifact.id)}
                             >
@@ -2172,19 +2258,25 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
     );
   };
 
+  // Function to fully close tool results library
+  const closeToolResultsLibrary = () => {
+    setShowToolResultsLibrary(false);
+    setToolResultsDropdownOpen(false);
+  };
+
   // Tool Results Library component
   const ToolResultsLibrary = () => {
     const [searchTerm, setSearchTerm] = useState('');
-    
+
     // Filter results based on search term
     const filteredResults = searchTerm.trim() === ''
       ? savedToolResults
-      : savedToolResults.filter(result => 
+      : savedToolResults.filter(result =>
           result.toolName.toLowerCase().includes(searchTerm.toLowerCase()) ||
           result.summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (result.url && result.url.toLowerCase().includes(searchTerm.toLowerCase()))
         );
-    
+
     // Function to format date
     const formatDate = (date: Date) => {
       return new Date(date).toLocaleString(undefined, {
@@ -2194,43 +2286,43 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
         minute: '2-digit'
       });
     };
-    
+
     // Function to delete a tool result
     const deleteToolResult = (id: string) => {
       setSavedToolResults(prev => prev.filter(result => result.id !== id));
-      
+
       // Update localStorage
       const updatedResults = savedToolResults.filter(result => result.id !== id);
       localStorage.setItem('toolResults', JSON.stringify(updatedResults));
-      
+
       // Show notification
       showNotification("Result deleted", "The tool result has been removed from your library.");
     };
-    
+
     // Function to copy share link
     const copyResultLink = (url: string) => {
       const fullUrl = window.location.origin + url;
       navigator.clipboard.writeText(fullUrl);
       copyShareLink(fullUrl);
     };
-    
+
     return (
       <div className="fixed inset-0 z-50 flex flex-col bg-black/90 transition-all duration-300 ease-in-out">
         <div className="flex items-center justify-between p-4 border-b border-[#333333]">
           <div className="text-white font-medium">
             Tool Results Library: <span className="text-blue-400">{savedToolResults.length} saved results</span>
           </div>
-          
-          <Button 
+
+          <Button
             size="sm"
             variant="outline"
             className="h-8 px-3"
-            onClick={() => setShowToolResultsLibrary(false)}
+            onClick={closeToolResultsLibrary}
           >
             Close
           </Button>
         </div>
-        
+
         <div className="p-4 border-b border-[#333]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -2242,7 +2334,7 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
               className="w-full px-3 py-2 pl-10 pr-10 bg-[#0a0a0a] border border-[#333] rounded text-white focus:outline-none"
             />
             {searchTerm && (
-              <button 
+              <button
                 onClick={() => setSearchTerm('')}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
               >
@@ -2251,7 +2343,7 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
             )}
           </div>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-4">
           {filteredResults.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
@@ -2271,8 +2363,8 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredResults.map(result => (
-                <div 
-                  key={result.id} 
+                <div
+                  key={result.id}
                   className="bg-[#111] border border-[#333] rounded-md overflow-hidden hover:border-blue-500 transition-colors"
                 >
                   <div className="p-4">
@@ -2282,20 +2374,20 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
                         {formatDate(result.createdAt)}
                       </span>
                     </div>
-                    
+
                     {result.url && (
                       <div className="text-gray-400 text-sm mt-1 truncate">
                         {result.url}
                       </div>
                     )}
-                    
+
                     <p className="text-gray-400 text-sm mt-2 line-clamp-3">{result.summary}</p>
                   </div>
-                  
+
                   <div className="border-t border-[#222] p-3 flex justify-between">
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       className="h-8 text-gray-400 hover:text-white"
                       onClick={() => {
                         // Launch the appropriate viewer based on tool type
@@ -2304,14 +2396,14 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
                     >
                       <ExternalLink className="h-3.5 w-3.5 mr-1" /> View
                     </Button>
-                    
+
                     <div className="flex gap-1">
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               className="h-8 px-2 text-gray-400 hover:text-white"
                               onClick={() => {
                                 if (result.shareUrl) {
@@ -2327,22 +2419,23 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      
+
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               className="h-8 px-2 text-gray-400 hover:text-white"
                               onClick={() => {
                                 // Add this result to the current chat
                                 const assistantMessage: Message = {
-                                  role: 'assistant',
+                                  id: uuidv4(),
+                                  role: 'assistant' as const,
                                   content: `Here's the ${result.toolName} analysis I ran earlier:\n\n**Summary:** ${result.summary}\n\n[View Full Analysis](${result.shareUrl})\n\nWould you like me to explain any specific aspects of this analysis?`,
                                   toolResult: result // Add the tool result to the message for reference
                                 };
-                                
+
                                 setMessages(prev => [...prev, assistantMessage]);
                                 setShowToolResultsLibrary(false);
                               }}
@@ -2355,13 +2448,13 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      
+
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               className="h-8 px-2 text-red-400 hover:text-red-300"
                               onClick={() => deleteToolResult(result.id)}
                             >
@@ -2384,485 +2477,409 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
     );
   };
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Thread management header */}
-      <div className="flex items-center p-3 border-b border-[#333333] bg-[#0a0a0a]">
-        <div className="flex items-center space-x-2">
-          <Button
-            onClick={createNewThread}
-            variant="outline"
-            className="flex items-center justify-center bg-[#111] hover:bg-[#222] text-white py-2 px-4 rounded border border-[#333333]"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Thread
-          </Button>
-          
-          <div className="relative">
-            <button
-              onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-              className="flex items-center justify-between bg-[#111] hover:bg-[#222] text-white py-2 px-4 rounded border border-[#333333] min-w-[160px] h-9"
-            >
-              <div className="flex items-center">
-                <span className="text-sm font-medium truncate">
-                  {isLoadingModels ? "Loading..." : getModelDisplay(selectedModel)}
-                </span>
-              </div>
-              <ChevronDown className="h-4 w-4 ml-2 flex-shrink-0" />
-            </button>
-            
-            {modelDropdownOpen && (
-              <div className="absolute left-0 mt-1 w-72 bg-[#111111] border border-[#333333] rounded-md shadow-lg z-10 max-h-96 overflow-hidden">
-                <div className="p-2 border-b border-[#333333] sticky top-0 bg-[#111111]">
-                  <div className="relative">
-                    <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      type="text"
-                      value={modelSearch}
-                      onChange={(e) => setModelSearch(e.target.value)}
-                      placeholder="Search models..."
-                      className="w-full px-3 py-1 pl-8 pr-8 bg-[#0a0a0a] border border-[#444] rounded text-sm focus:outline-none"
-                    />
-                    {modelSearch && (
-                      <button 
-                        onClick={() => setModelSearch('')}
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="overflow-y-auto flex-1 max-h-80">
-                  {isLoadingModels ? (
-                    <div className="flex items-center justify-center p-4 text-gray-400">
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Loading available models...
-                    </div>
-                  ) : filteredModels.length > 0 ? (
-                    filteredModels.map((model) => (
-                      <div 
-                        key={model.id}
-                        className={cn(
-                          "px-4 py-2 cursor-pointer hover:bg-[#222]",
-                          selectedModel === model.id && "bg-[#222]"
-                        )}
-                        onClick={() => {
-                          setSelectedModel(model.id);
-                          setModelDropdownOpen(false);
-                          setModelSearch('');
-                        }}
-                      >
-                        <div className="font-medium">{model.name}</div>
-                        <div className="text-xs text-gray-400">{model.description}</div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="px-4 py-2 text-center text-gray-400">No models found</div>
-                  )}
-                </div>
-              </div>
-            )}
+  // New states for tool parameter handling
+  const [pendingToolRequest, setPendingToolRequest] = useState<{
+    tool: ToolDefinition | null,
+    params: Record<string, string>,
+    originalMessage: string
+  } | null>(null);
+
+  // Get search params for URL parameter handling
+  const searchParams = useSearchParams();
+
+  // ... existing useEffects ...
+
+  // Handle URL parameters for direct tool launching
+  useEffect(() => {
+    // Check for tool parameter
+    const toolParam = searchParams?.get('tool');
+    const promptParam = searchParams?.get('prompt');
+
+    if (toolParam) {
+      let targetTool: ToolDefinition | undefined;
+
+      // Find the tool based on partial name match
+      if (toolParam.toLowerCase().includes('web') || toolParam.toLowerCase().includes('scan')) {
+        targetTool = availableTools.find(t => t.name.includes('Website'));
+      } else if (toolParam.toLowerCase().includes('exec') || toolParam.toLowerCase().includes('persona')) {
+        targetTool = availableTools.find(t => t.name.includes('Executive'));
+      } else if (toolParam.toLowerCase().includes('deal') || toolParam.toLowerCase().includes('contextual')) {
+        targetTool = availableTools.find(t => t.name.includes('Deal'));
+      }
+
+      if (targetTool) {
+        console.log('Launching tool from URL param:', targetTool.name);
+
+        // Set up pending tool request
+        setPendingToolRequest({
+          tool: targetTool,
+          params: {},
+          originalMessage: `Launch ${targetTool.name}`
+        });
+      }
+    } else if (promptParam) {
+      // Set input field with the prompt parameter
+      setInput(promptParam);
+    }
+  }, [searchParams]);
+
+  // ... existing functions ...
+
+  // ... rest of the existing component ...
+
+  // This replaces the dropdown-based models menu with a simple button
+  const openModelSelector = () => {
+    // Close other dropdowns first
+    setThreadsDropdownOpen(false);
+    setLibraryDropdownOpen(false);
+    setToolResultsDropdownOpen(false);
+    
+    // Clear and reset the model search
+    setModelSearch('');
+    
+    // Show the model selector as its own fullscreen overlay
+    setShowModelSelector(true);
+  };
+  
+  // Close model selector
+  const closeModelSelector = () => {
+    setShowModelSelector(false);
+  };
+  
+  // State for model selector
+  const [showModelSelector, setShowModelSelector] = useState(false);
+  
+  // Simple Model Selector component
+  const ModelSelector = () => {
+    return (
+      <div className="fixed inset-0 z-[100] flex flex-col bg-black/95 transition-all duration-300 ease-in-out">
+        <div className="flex items-center justify-between p-4 border-b border-[#333333]">
+          <div className="text-white font-medium">
+            Select AI Model
           </div>
-          
-          {/* Add Library Button */}
           <Button
-            onClick={() => setShowLibrary(true)}
+            size="sm"
             variant="outline"
-            className="flex items-center justify-center bg-[#111] hover:bg-[#222] text-white py-2 px-4 rounded border border-[#333333] ml-2"
+            className="h-8 px-3"
+            onClick={closeModelSelector}
           >
-            <Bookmark className="h-4 w-4 mr-2" />
-            Code Library
-            {savedArtifacts.length > 0 && (
-              <span className="ml-2 bg-blue-500 text-white text-xs rounded-full px-2 py-0.5">
-                {savedArtifacts.length}
-              </span>
-            )}
+            Close
           </Button>
-          
-          {/* Add Tool Results Library Button */}
-          <Button
-            onClick={() => setShowToolResultsLibrary(true)}
-            variant="outline"
-            className="flex items-center justify-center bg-[#111] hover:bg-[#222] text-white py-2 px-4 rounded border border-[#333333] ml-2"
-          >
-            <Globe className="h-4 w-4 mr-2" />
-            Tool Results
-            {savedToolResults.length > 0 && (
-              <span className="ml-2 bg-blue-500 text-white text-xs rounded-full px-2 py-0.5">
-                {savedToolResults.length}
-              </span>
-            )}
-          </Button>
-          
-          {/* Remove Auto Preview Toggle Button but keep functionality enabled */}
-          <input type="hidden" value="true" />
         </div>
         
-        {/* Thread selector (only shows when there are threads) */}
-        {threads.length > 0 && (
-          <div className="relative ml-auto">
-            <button
-              onClick={() => setThreadDropdownOpen(!threadDropdownOpen)}
-              className="flex items-center justify-between bg-[#111] hover:bg-[#222] text-white py-2 px-4 rounded border border-[#333333] min-w-[140px] h-9"
-            >
-              <span className="text-sm font-medium truncate">
-                {activeThreadId 
-                  ? threads.find(t => t.id === activeThreadId)?.name || "Current Thread" 
-                  : "Select Thread"}
-              </span>
-              <ChevronDown className="h-4 w-4 ml-2 flex-shrink-0" />
-            </button>
-            
-            {threadDropdownOpen && (
-              <div className="absolute right-0 mt-1 w-72 bg-[#111111] border border-[#333333] rounded-md shadow-lg z-10">
-                <div className="overflow-y-auto max-h-80 divide-y divide-[#222]">
-                  {threads
-                    .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
-                    .map((thread) => (
-                      <div 
-                        key={thread.id}
-                        className={cn(
-                          "px-3 py-2 cursor-pointer hover:bg-[#222] flex justify-between items-center",
-                          activeThreadId === thread.id && "bg-[#222] border-l-2 border-blue-500"
-                        )}
-                        onClick={() => {
-                          selectThread(thread.id);
-                          setThreadDropdownOpen(false);
-                        }}
-                      >
-                        <div className="truncate flex-1">
-                          <div className="font-medium truncate">{thread.name}</div>
-                          <div className="text-xs text-gray-400 flex items-center">
-                            <span className="mr-2">{new Date(thread.lastUpdated).toLocaleString(undefined, { 
-                              month: 'short', 
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}</span>
-                            <span className="text-xs text-gray-500">{thread.messages.length} msgs</span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={(e) => deleteThread(thread.id, e)}
-                          className="p-1 text-gray-400 hover:text-white rounded-full hover:bg-[#333]"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                </div>
-              </div>
+        <div className="p-4 border-b border-[#333]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              type="text"
+              value={modelSearch}
+              onChange={(e) => setModelSearch(e.target.value)}
+              placeholder="Search models..."
+              className="w-full px-3 py-2 pl-10 pr-10 bg-[#0a0a0a] border border-[#333] rounded text-white focus:outline-none"
+            />
+            {modelSearch && (
+              <button
+                onClick={() => setModelSearch('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+              >
+                <X size={16} />
+              </button>
             )}
           </div>
-        )}
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {filteredModels.map(model => (
+              <Button
+                key={model.id}
+                variant={selectedModel === model.id ? "default" : "outline"}
+                className={`justify-start py-6 text-left ${selectedModel === model.id ? 'bg-blue-600 hover:bg-blue-700' : 'bg-[#111] hover:bg-[#222]'}`}
+                onClick={() => {
+                  setSelectedModel(model.id);
+                  closeModelSelector();
+                }}
+              >
+                <div className="flex flex-col">
+                  <span className="font-medium">{model.name}</span>
+                  <span className="text-xs text-gray-400 mt-1">{model.description}</span>
+                </div>
+              </Button>
+            ))}
+          </div>
+        </div>
       </div>
-      {/* Main chat interface */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-[#000000]">
-        {/* Chat messages area */}
-        <div className="flex-1 overflow-auto p-6">
-          {codePreview && (
-            <CodePreview
-              code={codePreview.code}
-              language={codePreview.language}
-              id={codePreview.id}
-              // Pass state and functions from parent
-              isSaving={isSavingArtifact}
-              setIsSaving={setIsSavingArtifact}
-              artifactTitle={artifactTitle}
-              setArtifactTitle={setArtifactTitle}
-              artifactDescription={artifactDescription}
-              setArtifactDescription={setArtifactDescription}
-              toggleSaving={toggleSavingArtifact}
-            />
-          )}
+    );
+  };
+
+  // Add state to track expanded code blocks
+  const [expandedCodeBlocks, setExpandedCodeBlocks] = useState<string[]>([]);
+
+  // Function to toggle code block expansion
+  const toggleCodeBlock = (codeId: string) => {
+    setExpandedCodeBlocks(prev => 
+      prev.includes(codeId) 
+        ? prev.filter(id => id !== codeId)
+        : [...prev, codeId]
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-full w-full relative">
+      {/* Show Model Selector if active */}
+      {showModelSelector && <ModelSelector />}
+      
+      {/* Show Library if active */}
+      {showLibrary && <CodeLibrary />}
+      
+      {/* Show Tool Results Library if active */}
+      {showToolResultsLibrary && <ToolResultsLibrary />}
+    
+      {/* Chat header with controls moved from bottom */}
+      <div className="bg-black border-b border-[#222222] p-3 z-10">
+        <div className="flex items-center justify-between max-w-5xl mx-auto">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost" 
+              size="sm"
+              className="flex items-center gap-1 hover:text-white text-gray-400 text-sm"
+              onClick={() => setShowModelSelector(true)}
+            >
+              <MessageSquare className="h-4 w-4" />
+              {getModelDisplay(selectedModel)}
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </div>
           
-          {showLibrary && <CodeLibrary />}
-          
-          {showToolResultsLibrary && <ToolResultsLibrary />}
-          
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center px-4">
-              <div className="max-w-3xl text-center">
-                <h2 className="text-3xl font-bold text-white mb-2">Deliver AI Assistant</h2>
-                <p className="text-lg text-gray-400 mb-8">Your intelligent partner for marketing and sales tasks</p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10 w-full max-w-2xl mx-auto">
-                  {suggestions.map((suggestion, i) => (
-                    <Card
-                      key={i}
-                      className="bg-[#111] border border-[#333] hover:border-blue-600 hover:bg-[#151515] transition-colors cursor-pointer group"
+          <div className="flex items-center gap-2">
+            {/* Thread Controls and Actions */}
+            <div className="relative" ref={threadsDropdownRef}>
+              <button
+                className="flex items-center gap-1 hover:text-white text-gray-400 text-sm"
+                onClick={() => setThreadsDropdownOpen(!threadsDropdownOpen)}
+              >
+                <Book className="h-4 w-4" />
+                Threads
+                {threadsDropdownOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </button>
+              
+              {/* Threads Dropdown Menu */}
+              {threadsDropdownOpen && (
+                <div className="absolute right-0 top-[calc(100%+5px)] bg-[#0a0a0a] border border-[#222222] rounded-md shadow-md z-50 min-w-[250px]">
+                  <div className="p-2 border-b border-[#222222]">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="w-full justify-start text-sm text-gray-400 hover:text-white"
                       onClick={() => {
-                        setInput(suggestion);
+                        createNewThread();
+                        setThreadsDropdownOpen(false);
                       }}
                     >
-                      <CardContent className="p-4 flex items-center">
-                        {i === 0 && <Search className="h-5 w-5 text-blue-400 mr-4 flex-shrink-0 group-hover:text-blue-500" />}
-                        {i === 1 && <Users className="h-5 w-5 text-blue-400 mr-4 flex-shrink-0 group-hover:text-blue-500" />}
-                        {i === 2 && <Target className="h-5 w-5 text-blue-400 mr-4 flex-shrink-0 group-hover:text-blue-500" />}
-                        {i === 3 && <Globe className="h-5 w-5 text-blue-400 mr-4 flex-shrink-0 group-hover:text-blue-500" />}
-                        {i === 4 && <Mail className="h-5 w-5 text-blue-400 mr-4 flex-shrink-0 group-hover:text-blue-500" />}
-                        <div className="text-left">
-                          <span className="text-white group-hover:text-blue-400">{suggestion}</span>
-                          <p className="text-xs text-gray-400 mt-1 group-hover:text-gray-300">
-                            {i === 0 && "Website Intelligence Scanner - Analyze site performance and content"}
-                            {i === 1 && "Executive Persona - Create detailed buyer personas for your target audience"}
-                            {i === 2 && "Customer Profile Generator - Build detailed ICP for marketing strategy"}
-                            {i === 3 && "Competitive Analysis - Extract and analyze competitor websites"}
-                            {i === 4 && "Sales Enablement - Create compelling outreach content"}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-                
-                <div className="text-gray-500 text-sm">
-                  <p>You can also directly ask for assistance with generating content, analyzing data, or implementing strategies.</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {messages.map((message, index) => (
-                <div 
-                  key={index} 
-                  className={cn(
-                    "flex",
-                    message.role === "user" ? "justify-end" : "justify-start"
-                  )}
-                >
-                  <div 
-                    className={cn(
-                      "relative max-w-[90%] rounded-md group",
-                      message.role === "user" 
-                        ? "bg-[#0a0a0a] border border-[#333333] text-white p-5 ml-auto" 
-                        : "bg-[#111111] border border-[#333333] text-white p-5"
-                    )}
-                  >
-                    {message.role === 'assistant' && message.model && (
-                      <div className="absolute top-1 right-1 flex items-center gap-2">
-                        <span className="bg-[#222] text-xs px-2 py-0.5 rounded-full text-gray-300">
-                          {getModelDisplay(message.model)}
-                        </span>
-                        
-                        {/* Copy whole message button */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button 
-                                onClick={() => handleCopyMessage(message.content)}
-                                className="bg-[#222] text-xs p-1 rounded-full text-gray-300 hover:text-white hover:bg-[#333] opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                {copiedMessage === message.content ? (
-                                  <Check className="h-3 w-3" />
-                                ) : (
-                                  <Clipboard className="h-3 w-3" />
-                                )}
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{copiedMessage === message.content ? "Copied!" : "Copy message"}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    )}
-                    
-                    {/* Thinking section (only for assistant messages with thinking content) */}
-                    {message.role === 'assistant' && message.thinking && (
-                      <div className="mb-4">
-                        <button 
-                          onClick={() => toggleThinking(`${index}`)}
-                          className="flex items-center text-xs font-medium text-gray-400 hover:text-white bg-[#222] hover:bg-[#333] px-2 py-1 rounded mb-2 transition-colors"
-                        >
-                          {expandedThinking.includes(`${index}`) ? (
-                            <>
-                              <ChevronUp className="h-3 w-3 mr-1" />
-                              Hide AI Thinking
-                            </>
-                          ) : (
-                            <>
-                              <ChevronDown className="h-3 w-3 mr-1" />
-                              Show AI Thinking
-                            </>
-                          )}
-                        </button>
-                        
-                        {expandedThinking.includes(`${index}`) && (
-                          <div className="p-3 bg-[#0a0a0a] border border-[#333] rounded-md mb-3 text-gray-300 text-sm">
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              components={{
-                                code({node, inline, className, children, ...props}: any) {
-                                  const match = /language-(\w+)/.exec(className || '');
-                                  const codeString = String(children).replace(/\n$/, '');
-                                  
-                                  if (inline) {
-                                    return <code className="px-1 py-0.5 bg-[#333] rounded text-xs font-mono" {...props}>{children}</code>
-                                  }
-                                  
-                                  return (
-                                    <div className="relative mt-2 mb-2 rounded overflow-hidden">
-                                      <div className="flex items-center justify-between bg-[#1a1a1a] px-3 py-1 rounded-t">
-                                        <span className="text-xs text-gray-400">{match && match[1] ? match[1] : 'code'}</span>
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <button 
-                                                onClick={() => handleCopyCode(codeString)}
-                                                className="text-xs text-gray-400 hover:text-white"
-                                              >
-                                                {copiedCode === codeString ? (
-                                                  <Check className="h-3 w-3" />
-                                                ) : (
-                                                  <Copy className="h-3 w-3" />
-                                                )}
-                                              </button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              <p>{copiedCode === codeString ? "Copied!" : "Copy code"}</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      </div>
-                                      <pre className="px-3 py-2 bg-[#0a0a0a] rounded-b overflow-auto">
-                                        <code className="text-white text-xs font-mono">{children}</code>
-                                      </pre>
-                                    </div>
-                                  );
-                                },
-                                p: ({children}) => <p className="mb-2 last:mb-0 text-gray-300 text-xs">{children}</p>,
-                                ul: ({children}) => <ul className="list-disc pl-4 mb-2 last:mb-0 text-gray-300 text-xs">{children}</ul>,
-                                ol: ({children}) => <ol className="list-decimal pl-4 mb-2 last:mb-0 text-gray-300 text-xs">{children}</ol>,
-                                li: ({children}) => <li className="mb-1 text-gray-300 text-xs">{children}</li>,
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Thread
+                    </Button>
+                  </div>
+                  
+                  <div className="max-h-[300px] overflow-y-auto py-1">
+                    {threads.length === 0 ? (
+                      <div className="px-3 py-2 text-sm text-gray-500">No threads yet</div>
+                    ) : (
+                      threads
+                        .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime())
+                        .map(thread => (
+                          <div 
+                            key={thread.id} 
+                            className={`px-3 py-2 flex items-center justify-between hover:bg-[#1a1a1a] transition-colors ${activeThreadId === thread.id ? 'bg-[#1a1a1a] text-white' : 'text-gray-400'}`}
+                          >
+                            <button
+                              className="text-left text-sm truncate flex-1"
+                              onClick={() => {
+                                selectThread(thread.id);
+                                setThreadsDropdownOpen(false);
                               }}
                             >
-                              {message.thinking}
-                            </ReactMarkdown>
+                              {thread.name}
+                            </button>
+                            
+                            <button
+                              className="p-1 hover:text-red-500 transition-colors"
+                              onClick={(e) => deleteThread(thread.id, e)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
                           </div>
-                        )}
-                      </div>
+                        ))
                     )}
-                    
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        code({node, inline, className, children, ...props}: any) {
-                          const match = /language-(\w+)/.exec(className || '');
-                          const codeString = String(children).replace(/\n$/, '');
-                          const language = getLanguageFromClassName(className);
-                          
-                          if (inline) {
-                            return <code className="px-1 py-0.5 bg-[#222] rounded text-sm font-mono" {...props}>{children}</code>
-                          }
-                          
-                          const canPreview = ['html', 'css', 'javascript', 'js', 'jsx', 'tsx', 'react'].includes(language) || 
-                                           isHTML(codeString) || 
-                                           isCSS(codeString);
-                          
-                          return (
-                            <div className="relative mt-4 mb-4 rounded overflow-hidden">
-                              <div className="flex items-center justify-between bg-[#1a1a1a] px-4 py-1 rounded-t">
-                                <span className="text-xs text-gray-400">{match && match[1] ? match[1] : 'code'}</span>
-                                <div className="flex items-center gap-2">
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <button 
-                                          onClick={() => handleCopyCode(codeString)}
-                                          className="text-xs text-gray-400 hover:text-white"
-                                        >
-                                          {copiedCode === codeString ? (
-                                            <Check className="h-3 w-3" />
-                                          ) : (
-                                            <Copy className="h-3 w-3" />
-                                          )}
-                                        </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>{copiedCode === codeString ? "Copied!" : "Copy code"}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </div>
-                              </div>
-                              <pre className="px-4 py-3 bg-[#0a0a0a] rounded-b overflow-auto">
-                                <code className="text-white text-sm font-mono">{children}</code>
-                              </pre>
-                              {canPreview && (
-                                <div className="mt-2 flex justify-end">
-                                  <button
-                                    onClick={() => handleShowPreview(codeString, language)}
-                                    className="text-xs flex items-center gap-1 text-gray-300 hover:text-white bg-[#1a1a1a] px-3 py-1.5 rounded"
-                                  >
-                                    <Play className="h-3 w-3" /> Preview Code
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        },
-                        p: ({children}) => <p className="mb-4 last:mb-0 text-gray-100">{children}</p>,
-                        ul: ({children}) => <ul className="list-disc pl-5 mb-4 last:mb-0 text-gray-100">{children}</ul>,
-                        ol: ({children}) => <ol className="list-decimal pl-5 mb-4 last:mb-0 text-gray-100">{children}</ol>,
-                        li: ({children}) => <li className="mb-1 text-gray-100">{children}</li>,
-                        a: ({href, children}) => <a href={href} className="text-blue-400 hover:underline" target="_blank" rel="noreferrer">{children}</a>,
-                        blockquote: ({children}) => <blockquote className="border-l-4 border-[#333] pl-4 italic my-4 text-gray-400">{children}</blockquote>,
-                        h1: ({children}) => <h1 className="text-2xl font-bold my-4 text-white">{children}</h1>,
-                        h2: ({children}) => <h2 className="text-xl font-bold my-3 text-white">{children}</h2>,
-                        h3: ({children}) => <h3 className="text-lg font-bold my-2 text-white">{children}</h3>,
-                        table: ({children}) => <div className="overflow-auto my-4 border border-[#333] rounded"><table className="w-full border-collapse">{children}</table></div>,
-                        thead: ({children}) => <thead className="bg-[#111] text-left">{children}</thead>,
-                        tbody: ({children}) => <tbody>{children}</tbody>,
-                        tr: ({children}) => <tr className="border-b border-[#333]">{children}</tr>,
-                        th: ({children}) => <th className="p-2 border-r last:border-r-0 border-[#333] text-white">{children}</th>,
-                        td: ({children}) => <td className="p-2 border-r last:border-r-0 border-[#333] text-gray-300">{children}</td>,
-                      }}
-                    >
-                      {message.content}
-                    </ReactMarkdown>
                   </div>
                 </div>
-              ))}
-              
-              {/* Typing indicator appears in the chat flow */}
-              {isLoading && <TypingIndicator />}
-              
-              <div ref={endOfMessagesRef} />
+              )}
             </div>
-          )}
-        </div>
-        
-        {/* Input area - improved with shadcn styling */}
-        <div className="border-t border-[#333333] p-4 bg-[#0a0a0a]">
-          <div className="relative mx-auto max-w-4xl flex items-end">
-            <div className="relative flex-1">
-              <Textarea
-                placeholder="Type a message..."
-                className="w-full min-h-[52px] max-h-[200px] bg-[#0a0a0a] border border-[#333333] rounded-md pl-4 pr-12 py-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={isLoading}
-              />
-            </div>
+
+            <Button 
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-1 hover:text-white text-gray-400 text-sm"
+              onClick={() => setShowLibrary(true)}
+            >
+              <Bookmark className="h-4 w-4" />
+              Code Library
+            </Button>
             
             <Button
-              className={cn(
-                "ml-2 p-2 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600 shadow-md transition-all duration-200 h-10 w-10 flex items-center justify-center",
-                (!input.trim() || isLoading) && "opacity-50 cursor-not-allowed from-blue-500/70 to-blue-400/70"
-              )}
-              disabled={isLoading || !input.trim()}
-              onClick={handleSend}
-              size="icon"
-              aria-label="Send message"
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-1 hover:text-white text-gray-400 text-sm"
+              onClick={() => setShowToolResultsLibrary(true)}
             >
-              <Send className="h-5 w-5" />
+              <Wrench className="h-4 w-4" />
+              Tool Results
             </Button>
           </div>
         </div>
+      </div>
+
+      {/* Chat body */}
+      <div className="flex-1 overflow-y-auto p-6 pb-32">
+        {messages.map((message, index) => {
+          // Ensure each message has an ID
+          const messageId = message.id || `message-${index}`;
+          
+          return (
+            <div key={messageId} className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  {message.role === 'user' ? (
+                    <div className="w-8 h-8 bg-[#3b82f6] rounded-full flex items-center justify-center text-white">
+                      {message.role.charAt(0).toUpperCase()}
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 bg-[#6b7280] rounded-full flex items-center justify-center text-white">
+                      {message.role.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="text-sm text-gray-400">{message.role === 'user' ? 'You' : 'Assistant'}</span>
+                  {message.model && message.role === 'assistant' && (
+                    <span className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded">
+                      {getModelDisplay(message.model)}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {message.role === 'assistant' && message.thinking && (
+                    <button
+                      onClick={() => toggleThinking(messageId)}
+                      className={`text-xs px-2 py-0.5 rounded ${expandedThinking.includes(messageId) ? 'bg-blue-900 text-blue-100' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                    >
+                      {expandedThinking.includes(messageId) ? 'Hide thinking' : 'Show thinking'}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="mt-2">
+                {message.role === 'user' ? (
+                  <pre className="whitespace-pre-wrap">{message.content}</pre>
+                ) : (
+                  <ReactMarkdown
+                    components={renderers}
+                    remarkPlugins={[remarkGfm]}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
+                )}
+                {message.role === 'assistant' && message.thinking && (
+                  <div className={`mt-3 border border-blue-800 bg-blue-900/20 p-3 rounded-md ${expandedThinking.includes(messageId) ? '' : 'hidden'}`}>
+                    <div className="text-xs text-blue-400 mb-2 font-medium">Model thinking process:</div>
+                    <ReactMarkdown
+                      components={renderers}
+                      remarkPlugins={[remarkGfm]}
+                    >
+                      {message.thinking}
+                    </ReactMarkdown>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {isLoading && <TypingIndicator />}
+        <div ref={endOfMessagesRef} />
+      </div>
+
+      {/* Input area */}
+      <div className="absolute bottom-0 left-0 right-0 bg-black border-t border-[#222222] p-4 z-10">
+        {codePreview && (
+          <CodePreview
+            code={codePreview.code}
+            language={codePreview.language}
+            id={codePreview.id}
+            isSaving={isSavingArtifact}
+            setIsSaving={setIsSavingArtifact}
+            artifactTitle={artifactTitle}
+            setArtifactTitle={setArtifactTitle}
+            artifactDescription={artifactDescription}
+            setArtifactDescription={setArtifactDescription}
+            toggleSaving={toggleSavingArtifact}
+          />
+        )}
+
+        <div className="flex items-start gap-2 max-w-5xl mx-auto">
+          <Textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask a question or prompt the assistant..."
+            className="flex-1 bg-[#111111] border-gray-800 focus:border-blue-500 min-h-[60px] max-h-[200px] placeholder:text-gray-400 resize-none shadow-inner rounded-md text-white p-3"
+            disabled={isLoading}
+          />
+          <Button
+            onClick={handleSend}
+            disabled={!input.trim() || isLoading}
+            className={cn(
+              "h-[60px] rounded-md flex items-center justify-center px-4 transition-all duration-200 transform shadow-sm",
+              !input.trim() || isLoading
+                ? "bg-gray-800 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700 hover:shadow-lg hover:translate-y-[-2px]"
+            )}
+          >
+            <div className="relative flex items-center justify-center">
+              {isLoading ? (
+                <RefreshCw className="h-5 w-5 animate-spin text-white" />
+              ) : (
+                <Send className="h-5 w-5 text-white" />
+              )}
+            </div>
+          </Button>
+        </div>
+
+        {/* Add a light gray highlight around the input area */}
+        <div className="max-w-5xl mx-auto mt-1">
+          <div className="text-xs text-gray-500 flex items-center">
+            <span>Press <kbd className="px-1 py-0.5 bg-gray-800 rounded text-gray-400 mx-1 border border-gray-700">Enter</kbd> to send, <kbd className="px-1 py-0.5 bg-gray-800 rounded text-gray-400 mx-1 border border-gray-700">Shift+Enter</kbd> for new line</span>
+          </div>
+        </div>
+
+        {/* Sample Suggestions */}
+        {suggestions.length > 0 && (
+          <div className="mt-3 max-w-5xl mx-auto overflow-x-auto pb-2 flex space-x-2 no-scrollbar">
+            {suggestions.map((suggestion, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs text-gray-400 hover:text-white flex-shrink-0"
+                onClick={() => setInput(suggestion)}
+              >
+                {suggestion}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

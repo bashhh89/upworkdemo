@@ -8,9 +8,10 @@ import { cn } from '@/lib/utils'; // Import cn
 export function HomePage({ onNavigate }: { onNavigate: (id: string) => void }) {
   // Placeholder data for quick access and recent activity
   const quickAccessItems = [
-    { label: "Run Deal Writer", action: () => onNavigate('deal-writer') }, // Example action
-    { label: "Generate Image", action: () => onNavigate('image-generator') }, // Example action
-    { label: "Check Website Intel", action: () => onNavigate('website-intel') }, // Example action
+    { label: "AI Agent Studio", action: () => window.location.href = "/agent-studio" },
+    { label: "Run Deal Writer", action: () => onNavigate('deal-writer') },
+    { label: "Generate Image", action: () => onNavigate('image-generator') },
+    { label: "Check Website Intel", action: () => onNavigate('website-intel') },
   ];
 
   const recentActivity = [

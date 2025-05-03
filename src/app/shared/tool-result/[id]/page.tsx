@@ -35,10 +35,23 @@ export default function SharedToolResultPage() {
           if (found) {
             setResult(found);
           } else {
-            setNotFound(true);
+            // If not found in localStorage, check for mock data in a simulated "database"
+            // In a real app, this would be an API call to backend storage
+            const mockResult = createMockResult(id as string);
+            if (mockResult) {
+              setResult(mockResult);
+            } else {
+              setNotFound(true);
+            }
           }
         } else {
-          setNotFound(true);
+          // Create a mock result if nothing in localStorage
+          const mockResult = createMockResult(id as string);
+          if (mockResult) {
+            setResult(mockResult);
+          } else {
+            setNotFound(true);
+          }
         }
       } catch (error) {
         console.error('Error loading saved tool result:', error);
@@ -51,6 +64,44 @@ export default function SharedToolResultPage() {
     loadResult();
   }, [id]);
   
+  // Function to create a mock result if none exists (for demo purposes)
+  const createMockResult = (resultId: string): ToolResult | null => {
+    // Only create mock for specific IDs (like demo-123)
+    if (!resultId.includes('demo')) return null;
+    
+    return {
+      id: resultId,
+      toolName: 'Website Intelligence Scanner',
+      content: {
+        url: 'https://example.com',
+        title: 'Website Analysis for example.com',
+        categories: ['Technology', 'Marketing', 'SaaS', 'B2B'],
+        links: [
+          'https://example.com/about',
+          'https://example.com/pricing',
+          'https://example.com/contact',
+          'https://example.com/blog',
+          'https://twitter.com/example',
+          'https://linkedin.com/company/example'
+        ],
+        images: [
+          { src: '/logo.png', alt: 'Logo' },
+          { src: '/hero.jpg', alt: 'Hero Image' },
+          { src: '/product.png', alt: 'Product Screenshot' }
+        ],
+        content: 'This is a sample website content for example.com.',
+        metadata: {
+          description: 'A sample website description',
+          keywords: ['sample', 'website', 'analysis']
+        }
+      },
+      summary: 'Analysis of example.com complete',
+      parameters: { url: 'https://example.com' },
+      url: 'https://example.com',
+      createdAt: new Date()
+    };
+  };
+  
   const copyShareLink = () => {
     if (result) {
       const url = window.location.href;
@@ -59,8 +110,39 @@ export default function SharedToolResultPage() {
       toast({
         title: "Share link copied!",
         description: "Share this link to give others access to this tool result.",
+        action: (
+          <Button 
+            onClick={() => toast.dismiss()} 
+            className="bg-transparent hover:bg-white/10"
+          >
+            Dismiss
+          </Button>
+        )
       });
       setTimeout(() => setLinkCopied(false), 2000);
+    }
+  };
+  
+  const generateEmbedCode = () => {
+    return `<iframe src="${window.location.href}/embed" width="100%" height="500" frameborder="0"></iframe>`;
+  };
+  
+  const copyEmbedCode = () => {
+    if (result) {
+      const embedCode = generateEmbedCode();
+      navigator.clipboard.writeText(embedCode);
+      toast({
+        title: "Embed code copied!",
+        description: "Paste this code into your website to embed this result.",
+        action: (
+          <Button 
+            onClick={() => toast.dismiss()} 
+            className="bg-transparent hover:bg-white/10"
+          >
+            Dismiss
+          </Button>
+        )
+      });
     }
   };
   

@@ -2,7 +2,6 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from '@/components/ui/toaster'
-import HomeNavWrapper from '@/components/HomeNavWrapper'
 
 // Import buffer shim if it exists
 try {
@@ -27,7 +26,6 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.className} h-screen dark bg-[#0a0a0a]`}>
         {children}
-        <HomeNavWrapper />
         <Toaster />
       </body>
     </html>
