@@ -2,13 +2,15 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from "@/lib/utils";
-import { Send, Plus, RefreshCw, ChevronDown, ChevronUp, Copy, Check, Search, X, MessageSquare, Trash2, Clipboard, Play, Maximize, Minimize, Save, ExternalLink, Bookmark, BookmarkCheck, Users, Target, Globe, Mail, Info, Wrench, Building, Book } from 'lucide-react';
+import { Send, Plus, RefreshCw, ChevronDown, ChevronUp, Copy, Check, Search, X, MessageSquare, Trash2, Clipboard, Play, Maximize, Minimize, Save, ExternalLink, Bookmark, BookmarkCheck, Users, Target, Globe, Mail, Info, Wrench, Building, Book, Sparkles, LayoutTemplate, ImagePlus } from 'lucide-react'; // Added ImagePlus icon
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card"; // Added Card and CardContent import
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import PromptStudioModal from '@/components/PromptStudioModal'; // Import PromptStudioModal
+import VariableManagerModal from '@/components/VariableManagerModal'; // Import VariableManagerModal
 import {
   Tooltip,
   TooltipContent,
@@ -17,7 +19,7 @@ import {
 } from "@/components/ui/tooltip";
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from "@/components/ui/use-toast";
-import { useSearchParams } from 'next/navigation'; // Add this for URL parameter handling
+import { useSearchParams } from 'next/navigation'; // Add this for URL parameter parameter handling
 import { detectToolRequest, extractParametersFromMessage, hasAllRequiredParameters, availableTools } from '@/lib/tool-utils';
 import { ToolDefinition } from '@/types/tools'; // Import type definition
 
@@ -28,6 +30,7 @@ interface Message {
   thinking?: string;
   toolResult?: ToolResult; // Add this line
   id?: string; // Add this line
+  image?: string; // Add this line for image attachment
 }
 
 interface Thread {
@@ -69,15 +72,23 @@ export default function ChatSection() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const [inputValue, setInputValue] = useState(''); // Renamed input to inputValue for clarity
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState("openai");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [isPromptStudioOpen, setIsPromptStudioOpen] = useState(false); // State for Prompt Studio modal
+  const [isVariableManagerOpen, setIsVariableManagerOpen] = useState(false); // State for Variable Manager modal
   const [modelSearch, setModelSearch] = useState('');
   const [threadNameInput, setThreadNameInput] = useState('');
   // Add ref for textarea
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Add ref for file input
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Add state for image attachment
+  const [imageAttachment, setImageAttachment] = useState<string | null>(null);
+  const [isProcessingImage, setIsProcessingImage] = useState(false); // Add state for image processing
+  
   // Define initial Pollinations models with state
   const [pollinationsModels, setPollinationsModels] = useState<Model[]>([
     { id: "openai-large", name: "OpenAI Large", description: "GPT-4o - More powerful OpenAI model with enhanced capabilities" },
@@ -516,13 +527,13 @@ export default function ChatSection() {
     requiredParams: string[]
   } | null>(null);
 
-  // Function to detect and execute tools based on user input
-  const detectAndExecuteTool = async (input: string) => {
-    const detectedTool = detectToolRequest(input);
+  // Function to detect and execute tools based on user inputValue
+  const detectAndExecuteTool = async (inputValue: string) => {
+    const detectedTool = detectToolRequest(inputValue);
 
     if (detectedTool) {
       // Extract parameters from the message
-      const extractedParams = extractParametersFromMessage(input, detectedTool);
+      const extractedParams = extractParametersFromMessage(inputValue, detectedTool);
 
       // Check if all required parameters are present
       const hasAllParams = hasAllRequiredParameters(extractedParams, detectedTool);
@@ -542,7 +553,7 @@ export default function ChatSection() {
         setPendingToolRequest({
           tool: detectedTool,
           params: extractedParams,
-          originalMessage: input
+          originalMessage: inputValue
         });
 
         return true; // Tool handling in progress
@@ -553,7 +564,7 @@ export default function ChatSection() {
 
     // Website Intelligence detection
     const websiteRegex = /analyze\s+(website|site|url|domain)?:?\s*(https?:\/\/[^\s]+)?/i;
-    const websiteMatch = input.match(websiteRegex);
+    const websiteMatch = inputValue.match(websiteRegex);
 
     if (websiteMatch) {
       // If URL is provided, execute immediately
@@ -572,7 +583,7 @@ export default function ChatSection() {
 
     // Executive Persona detection
     const personaRegex = /create\s+(an?\s+)?(executive|leader|cxo)\s+persona\s+for\s+a?\s+([^]+?)\s+in\s+([^]+?)(?:\.|$)/i;
-    const personaMatch = input.match(personaRegex);
+    const personaMatch = inputValue.match(personaRegex);
 
     if (personaMatch) {
       if (personaMatch[3] && personaMatch[4]) {
@@ -593,7 +604,7 @@ export default function ChatSection() {
 
     // Customer Profile detection
     const profileRegex = /generate\s+(a\s+)?(customer|client|buyer)\s+profile\s+for\s+([^]+?)(?:\.|$)/i;
-    const profileMatch = input.match(profileRegex);
+    const profileMatch = inputValue.match(profileRegex);
 
     if (profileMatch) {
       if (profileMatch[3]) {
@@ -1030,6 +1041,14 @@ export default function ChatSection() {
     }, 100);
   };
 
+  // Handler to select a prompt template
+  const handleSelectTemplate = (promptText: string) => {
+    setInputValue(promptText); // Update chat inputValue state
+    setIsPromptStudioOpen(false); // Close the modal
+    // Optional: Focus the inputValue field after setting the text
+    inputRef.current?.focus();
+  };
+
   // Component for the artifact saving form
   interface ArtifactSaveFormProps {
     isSaving: boolean;
@@ -1054,12 +1073,12 @@ export default function ChatSection() {
     toggleSaving,
     language = 'code' // Default value for language
   }: ArtifactSaveFormProps) => {
-    // Use local state to avoid focus issues with controlled inputs
+    // Use local state to avoid focus issues with controlled inputValues
     // Ensure default empty string in case initial prop is undefined
     const [localTitle, setLocalTitle] = useState(artifactTitle || '');
     const [localDescription, setLocalDescription] = useState(artifactDescription || '');
 
-    // Update parent state only when input is complete (blur/submit)
+    // Update parent state only when inputValue is complete (blur/submit)
     const updateTitle = (value: string) => {
       setLocalTitle(value);
       setArtifactTitle(value);
@@ -1115,7 +1134,7 @@ export default function ChatSection() {
                 </Button>
                 <Button
                   size="sm"
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 text-white hover:bg-blue-700"
                   onClick={() => {
                     // Update parent state before saving
                     setArtifactTitle(localTitle);
@@ -1199,7 +1218,7 @@ export default function ChatSection() {
 
   // Modify handleSend to use tools when appropriate
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!inputValue.trim() && !imageAttachment) return;
 
     // If no active thread, create one
     if (!activeThreadId) {
@@ -1209,23 +1228,52 @@ export default function ChatSection() {
       await new Promise(resolve => setTimeout(resolve, 50));
     }
 
-    // First, check if the input should trigger a specialized tool
-    const toolResult = await detectAndExecuteTool(input.trim());
+    // First, check if the inputValue should trigger a specialized tool
+    if (inputValue.trim() && !imageAttachment) {
+      const toolResult = await detectAndExecuteTool(inputValue.trim());
 
-    // If a tool was executed, no need to call the chat API
-    if (toolResult) {
-      setInput('');
-      // Focus back on the textarea
-      setTimeout(() => inputRef.current?.focus(), 50);
-      return;
+      // If a tool was executed, no need to call the chat API
+      if (toolResult) {
+        setInputValue('');
+        // Focus back on the textarea
+        setTimeout(() => inputRef.current?.focus(), 50);
+        return;
+      }
     }
 
+    console.log("Sending message with image:", imageAttachment ? "yes (length: " + imageAttachment.length + ")" : "no");
+
     // Regular chat flow for non-tool messages
-    // Add user message with ID
-    const userMessage: Message = { id: uuidv4(), role: 'user' as const, content: input };
-    const updatedMessages: Message[] = [...messages, userMessage];
+    console.log("Entering handleSend. Current imageAttachment state:", 
+      imageAttachment ? `String (length: ${imageAttachment.length}, preview: ${imageAttachment.substring(0, 30)}...)` : imageAttachment
+    );
+
+    // Explicitly get the current value before creating the message
+    const currentImageAttachment = imageAttachment; 
+    const currentInputValue = inputValue.trim();
+
+    // Check if imageAttachment is a valid string before adding it
+    const imagePayload = typeof currentImageAttachment === 'string' && currentImageAttachment.startsWith('data:image')
+      ? { image: currentImageAttachment }
+      : {};
+
+    console.log(`handleSend: currentImageAttachment type is ${typeof currentImageAttachment}. imagePayload created:`, imagePayload);
+
+    // Create the user message object using the current values
+    const userMessage: Message = {
+      id: uuidv4(),
+      role: 'user' as const,
+      content: currentInputValue || (currentImageAttachment ? "[Image attached]" : ""), // Use placeholder if only image
+      ...imagePayload // Conditionally add image payload
+    };
+
+    console.log("Created message:", userMessage.id, "with image:", userMessage.image ? "yes" : "no");
+
+    // Add message to current thread messages
+    const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
-    setInput('');
+    setInputValue('');
+    setImageAttachment(null); // Clear the image attachment after sending
     setIsLoading(true);
 
     try {
@@ -1235,15 +1283,48 @@ export default function ChatSection() {
       }, 100);
 
       // Check if this is likely a code generation request
-      const isCodeRequest = /code|create|generate|script|html|css|javascript|function|programming/i.test(input.toLowerCase());
+      const isCodeRequest = /code|create|generate|script|html|css|javascript|function|programming/i.test(inputValue.toLowerCase());
 
       // Check if it's a complex code request (landing pages, complete websites, etc.)
       const isComplexCodeRequest = isCodeRequest &&
-                                  /landing page|website|app|application|complete|full/i.test(input.toLowerCase());
+                                  /landing page|website|app|application|complete|full/i.test(inputValue.toLowerCase());
 
       // Add a timeout for the fetch request
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout for complex code generation
+
+      // Modify messagesForAPI to send image data in the correct format
+      const messagesForAPI = updatedMessages.map(msg => {
+        // Check if the message has a valid image string
+        if (msg.image && typeof msg.image === 'string' && msg.image.startsWith('data:image')) {
+          // Convert to OpenAI Vision format
+          return {
+            role: msg.role,
+            content: [
+              { 
+                type: "text", 
+                // Provide default text if content is empty, otherwise use original content
+                text: msg.content || "Describe this image:" 
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: msg.image // Send the base64 data URL
+                }
+              }
+            ]
+          };
+        } else {
+          // For messages without images, keep original format (role and content string)
+          // Ensure we only send role and content, excluding other potential fields like id, thinking, etc.
+          return { 
+            role: msg.role, 
+            content: msg.content 
+          };
+        }
+      });
+
+      console.log("Sending API request with processed messages (image format check):", messagesForAPI.length, messagesForAPI.find(m => Array.isArray(m.content)));
 
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -1251,7 +1332,8 @@ export default function ChatSection() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: updatedMessages,
+          // Send messages without image data to prevent 500 error
+          messages: messagesForAPI,
           model: selectedModel
         }),
         signal: controller.signal
@@ -1344,11 +1426,18 @@ export default function ChatSection() {
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputValue(e.target.value);
+    // Removed manual auto-resize logic
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // If Enter is pressed without Shift, send the message
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
+      e.preventDefault(); // Prevent default behavior (new line)
       handleSend();
     }
+    // If Shift+Enter is pressed, allow default behavior (new line in textarea)
   };
 
   // Modify createNewThread to properly initialize a new thread
@@ -2519,7 +2608,7 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
       }
     } else if (promptParam) {
       // Set input field with the prompt parameter
-      setInput(promptParam);
+      setInputValue(promptParam);
     }
   }, [searchParams]);
 
@@ -2622,6 +2711,229 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
         ? prev.filter(id => id !== codeId)
         : [...prev, codeId]
     );
+  };
+
+  // Helper function to process small image files
+  const processImageFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (typeof event.target?.result === 'string') {
+        const imageData = event.target.result;
+        console.log("Image loaded successfully, data length:", imageData.length);
+        setImageAttachment(imageData);
+        showNotification("Image attached", "Image ready to send with your message.");
+      } else {
+        console.log("Failed to read image as string");
+      }
+      setIsProcessingImage(false); // Processing finished
+    };
+    reader.onerror = (error) => {
+      console.error("Error reading file:", error);
+      showNotification("Error", "Failed to process image file.");
+      setIsProcessingImage(false); // Processing finished on error
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle file input change for image upload
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      console.log("No file selected");
+      return;
+    }
+    
+    // Validate it's an image file
+    if (!file.type.startsWith('image/')) {
+      console.log("Invalid file type:", file.type);
+      showNotification("Invalid file", "Please select an image file.");
+      e.target.value = ''; // Clear the input
+      return;
+    }
+
+    console.log("Processing image file:", file.name, "size:", file.size, "type:", file.type);
+    setIsProcessingImage(true); // Start processing
+    
+    // Check if file is too large (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      console.log("File too large:", file.size);
+      showNotification("File too large", "Please select an image smaller than 10MB.");
+      e.target.value = ''; // Clear the input
+      return;
+    }
+
+    // For large images, add compression to reduce size
+    if (file.size > 1 * 1024 * 1024) { // If larger than 1MB
+      console.log("Large image detected, compressing before upload");
+      
+      // Create a URL for the image file
+      const url = URL.createObjectURL(file);
+      
+      // Create an image element for compression
+      const img = new Image();
+      img.onload = () => {
+        // Release the object URL
+        URL.revokeObjectURL(url);
+        
+        // Calculate new dimensions (max 1200px width/height)
+        const MAX_WIDTH = 1200;
+        const MAX_HEIGHT = 1200;
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        
+        // Create canvas for resizing
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw the image to canvas, resized
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          console.error("Could not get canvas context for image compression");
+          processImageFile(file); // Fall back to original method
+          return;
+        }
+        
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convert to base64 with reduced quality
+        const quality = file.size > 5 * 1024 * 1024 ? 0.7 : 0.85; // More compression for very large files
+        const dataUrl = canvas.toDataURL(file.type, quality);
+        
+        console.log("Image compressed successfully, original size:", file.size, "compressed size:", Math.round(dataUrl.length * 0.75)); // Base64 is ~33% larger than binary
+        setImageAttachment(dataUrl);
+        showNotification("Image attached", "Compressed image ready to send with your message.");
+        setIsProcessingImage(false); // Processing finished
+      };
+      
+      img.onerror = () => {
+        console.error("Error loading image for compression");
+        processImageFile(file); // Fall back to original method
+      };
+      
+      // Set src to start loading
+      img.src = url;
+    } else {
+      // For smaller images, process normally
+      processImageFile(file); // This will set isProcessingImage to false on completion/error
+    }
+    
+    e.target.value = ''; // Clear the input for future uploads
+  };
+
+  // Improve paste handler with better error handling
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    console.log("Paste event detected, items:", items.length);
+    
+    for (let i = 0; i < items.length; i++) {
+      console.log("Clipboard item:", items[i].kind, items[i].type);
+      if (items[i].kind === 'file' && items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (!file) {
+          console.log("Failed to get file from clipboard item");
+          continue;
+        }
+        
+        // Check file size
+        if (file.size > 10 * 1024 * 1024) {
+          console.log("Pasted image too large:", file.size);
+          showNotification("File too large", "Please use an image smaller than 10MB.");
+          e.preventDefault();
+          return;
+        }
+        
+        console.log("Processing pasted image:", file.size, "bytes");
+        e.preventDefault(); // Prevent default paste behavior
+
+        // Use the same compression logic as for uploaded files
+        if (file.size > 1 * 1024 * 1024) { // If larger than 1MB
+          console.log("Large pasted image detected, compressing");
+          
+          // Create a URL for the image file
+          const url = URL.createObjectURL(file);
+          
+          // Create an image element for compression
+          const img = new Image();
+          img.onload = () => {
+            // Release the object URL
+            URL.revokeObjectURL(url);
+            
+            // Calculate new dimensions (max 1200px width/height)
+            const MAX_WIDTH = 1200;
+            const MAX_HEIGHT = 1200;
+            let width = img.width;
+            let height = img.height;
+            
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height *= MAX_WIDTH / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width *= MAX_HEIGHT / height;
+                height = MAX_HEIGHT;
+              }
+            }
+            
+            // Create canvas for resizing
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Draw the image to canvas, resized
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              console.error("Could not get canvas context for image compression");
+              processImageFile(file); // Fall back to original method
+              return;
+            }
+            
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Convert to base64 with reduced quality
+            const quality = file.size > 5 * 1024 * 1024 ? 0.7 : 0.85; // More compression for very large files
+            const dataUrl = canvas.toDataURL(file.type, quality);
+            
+            console.log("Pasted image compressed successfully, original size:", file.size, "compressed size:", Math.round(dataUrl.length * 0.75));
+            setImageAttachment(dataUrl);
+            showNotification("Image attached", "Compressed image ready to send with your message.");
+            setIsProcessingImage(false); // Processing finished
+          };
+          
+          img.onerror = () => {
+            console.error("Error loading pasted image for compression");
+            processImageFile(file); // Fall back to original method
+          };
+          
+          // Set src to start loading
+          img.src = url;
+        } else {
+          // For smaller images, process normally
+          processImageFile(file); // Handles setting isProcessingImage
+        }
+        
+        break; // Only handle the first image
+      }
+    }
+  };
+
+  // Remove image attachment
+  const removeImageAttachment = () => {
+    setImageAttachment(null);
   };
 
   return (
@@ -2782,7 +3094,29 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
               </div>
               <div className="mt-2">
                 {message.role === 'user' ? (
-                  <pre className="whitespace-pre-wrap">{message.content}</pre>
+                  <>
+                    <pre className="whitespace-pre-wrap">{message.content}</pre>
+                    {/* Display image attachment if present - with better error handling */}
+                    {message.image && (
+                      <div className="mt-2 max-w-md">
+                        <div className="text-xs text-gray-400 mb-1">
+                          Attached image (size: {message.image.length} characters)
+                        </div>
+                        <img 
+                          src={message.image} 
+                          alt="Attached image" 
+                          className="rounded-md max-h-80 object-contain border border-gray-700"
+                          onLoad={() => console.log("Image loaded successfully in message", message.id)}
+                          onError={(e) => {
+                            console.error("Failed to load image in message", message.id, "Image data length:", message.image?.length || 0);
+                            // Replace with error message
+                            e.currentTarget.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJkMmQyZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOHB4IiBmaWxsPSIjZmZmIj5FcnJvciBsb2FkaW5nIGltYWdlPC90ZXh0Pjwvc3ZnPg==";
+                            e.currentTarget.className = "rounded-md max-h-80 object-contain border border-red-500";
+                          }}
+                        />
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <ReactMarkdown
                     components={renderers}
@@ -2827,22 +3161,131 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
           />
         )}
 
+        {/* Prompt Studio Modal */}
+        <PromptStudioModal
+          isOpen={isPromptStudioOpen}
+          onClose={() => setIsPromptStudioOpen(false)}
+          onSelectTemplate={handleSelectTemplate}
+        />
+
+        <VariableManagerModal
+          isOpen={isVariableManagerOpen}
+          onClose={() => setIsVariableManagerOpen(false)}
+        />
+
+        {/* Image attachment preview */}
+        {imageAttachment && (
+          <div className="max-w-5xl mx-auto mb-2 p-2 border border-gray-700 rounded-md bg-[#111] flex items-center">
+            <div className="flex-shrink-0 mr-2">
+              <img
+                src={imageAttachment}
+                alt="Image attachment"
+                className="h-16 w-auto object-cover rounded-md"
+                onLoad={() => console.log("Preview image loaded successfully, data length:", imageAttachment.length)}
+              />
+            </div>
+            <div className="flex-1 min-w-0 text-gray-400 text-sm">
+              Attached image
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-gray-400 hover:text-white p-1 h-auto"
+              onClick={removeImageAttachment}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
         <div className="flex items-start gap-2 max-w-5xl mx-auto">
+          {/* Button to open Prompt Studio */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => setIsPromptStudioOpen(true)}
+                  className="p-2 h-auto"
+                  variant="outline"
+                  aria-label="Open Prompt Studio"
+                >
+                  <LayoutTemplate size={20} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Open Prompt Studio</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {/* Button to open Variable Manager Modal */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hover:bg-gray-800 text-gray-400 hover:text-white"
+                  onClick={() => setIsVariableManagerOpen(true)}
+                  disabled={isLoading}
+                >
+                  <Wrench className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="bg-zinc-800 text-white text-xs px-2 py-1 rounded-md">
+                Manage Variables
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          {/* Add image upload button with Lucide icon */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hover:bg-gray-800 text-gray-400 hover:text-white"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading}
+                >
+                  <ImagePlus className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="bg-zinc-800 text-white text-xs px-2 py-1 rounded-md">
+                Upload Image
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {/* Hidden file input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            onChange={handleFileInputChange}
+            style={{ display: 'none' }}
+          />
+
           <Textarea
             ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+            rows={1}
+            value={inputValue}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder="Ask a question or prompt the assistant..."
-            className="flex-1 bg-[#111111] border-gray-800 focus:border-blue-500 min-h-[60px] max-h-[200px] placeholder:text-gray-400 resize-none shadow-inner rounded-md text-white p-3"
-            disabled={isLoading}
+            className="flex-1 bg-[#111111] border-gray-800 focus:border-blue-500 min-h-[60px] max-h-[200px] placeholder:text-gray-400 shadow-inner rounded-md text-white p-3 overflow-y-auto"
+            disabled={isLoading || isProcessingImage} // Disable textarea while processing image
           />
           <Button
             onClick={handleSend}
-            disabled={!input.trim() || isLoading}
+            // Update disabled condition
+            disabled={(!inputValue.trim() && !imageAttachment) || isLoading || isProcessingImage}
             className={cn(
               "h-[60px] rounded-md flex items-center justify-center px-4 transition-all duration-200 transform shadow-sm",
-              !input.trim() || isLoading
+              // Update disabled style condition
+              (!inputValue.trim() && !imageAttachment) || isLoading || isProcessingImage 
                 ? "bg-gray-800 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700 hover:shadow-lg hover:translate-y-[-2px]"
             )}
@@ -2873,7 +3316,7 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
                 variant="outline"
                 size="sm"
                 className="h-8 text-xs text-gray-400 hover:text-white flex-shrink-0"
-                onClick={() => setInput(suggestion)}
+                onClick={() => setInputValue(suggestion)}
               >
                 {suggestion}
               </Button>

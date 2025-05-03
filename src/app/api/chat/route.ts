@@ -98,7 +98,8 @@ export async function POST(req: Request) {
     console.log("Chat API request:", { 
       model,
       messageCount: messages.length,
-      lastUserMessage: messages.find(m => m.role === 'user')?.content
+      lastUserMessage: messages.find(m => m.role === 'user')?.content,
+      containsImage: messages.some(m => 'image' in m) // Log if any message contains an image
     });
     
     // Fetch available models
@@ -120,6 +121,18 @@ export async function POST(req: Request) {
     // We'll use exactly what the user selected
     let effectiveModel = modelToUse;
     
+    // If we have images, ensure we use a model with vision capabilities
+    const hasImages = messages.some(m => 'image' in m);
+    if (hasImages) {
+      console.log("Message contains image(s), using vision-capable model");
+      // Force OpenAI-Large for vision capabilities if not already using a vision-capable model
+      // llama-vision is another option but may be less reliable
+      if (!['openai-large', 'llama-vision'].includes(effectiveModel)) {
+        console.log(`Switching from ${effectiveModel} to openai-large for vision capabilities`);
+        effectiveModel = 'openai-large';
+      }
+    }
+    
     if (model !== modelToUse) {
       console.log(`Requested model '${model}' not found, falling back to 'openai'`);
     } else {
@@ -134,10 +147,34 @@ export async function POST(req: Request) {
     // This is especially useful for reasoning-focused models
     const thinkingModels = ['deepseek-reasoning', 'deepseek-reasoning-large', 'deepseek', 'llama', 'llamascout', 'phi', 'gemini'];
     
-    let enhancedMessages = [...messages];
+    // Process messages to convert our custom image format to the one expected by the OpenAI Vision API
+    let enhancedMessages = messages.map(msg => {
+      // If the message has an image property, we need to convert it to the OpenAI Vision format
+      if ('image' in msg && msg.image) {
+        // Create a content array with text and image
+        return {
+          role: msg.role,
+          content: [
+            { 
+              type: "text", 
+              text: msg.content || "What's in this image?" 
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: msg.image // This should be a base64 data URL like "data:image/jpeg;base64,..."
+              }
+            }
+          ]
+        };
+      }
+      
+      // For messages without images, keep them as is
+      return msg;
+    });
     
     // Check if there is already a system message
-    const hasSystemMessage = messages.some(m => m.role === 'system');
+    const hasSystemMessage = enhancedMessages.some(m => m.role === 'system');
     
     // Default system instructions that all models should follow
     const defaultSystemMessage = `You are an AI assistant focused on helping users with their tasks, especially coding and development. 
@@ -150,6 +187,8 @@ When generating code examples, please follow these guidelines:
 5. For React or any framework code, ensure the code is complete enough to run without major modifications.
 6. When showing JavaScript features, include practical examples that demonstrate real-world use cases.
 
+${hasImages ? "When analyzing images, be detailed and explain what you see clearly. If text is visible in the image, mention it." : ""}
+
 When responding, first think through your reasoning step by step inside <think></think> tags before giving your final answer. This thinking will be shown to the user in a separate section.`;
     
     // Add or update system message
@@ -157,10 +196,24 @@ When responding, first think through your reasoning step by step inside <think><
       // Enhance existing system message
       enhancedMessages = enhancedMessages.map(m => {
         if (m.role === 'system') {
-          return {
-            ...m,
-            content: `${m.content}\n\n${defaultSystemMessage}`
-          };
+          // Check if the message has a content array or a string
+          if (Array.isArray(m.content)) {
+            // For array content, add our instructions to the first text element
+            return {
+              ...m,
+              content: m.content.map((c, i) => 
+                i === 0 && c.type === 'text' 
+                  ? { ...c, text: `${c.text}\n\n${defaultSystemMessage}` }
+                  : c
+              )
+            };
+          } else {
+            // For string content, append our instructions
+            return {
+              ...m,
+              content: `${m.content}\n\n${defaultSystemMessage}`
+            };
+          }
         }
         return m;
       });
@@ -171,6 +224,14 @@ When responding, first think through your reasoning step by step inside <think><
         content: defaultSystemMessage
       });
     }
+    
+    // Log processed messages (for debugging)
+    console.log("Sending to API with:", {
+      model: effectiveModel,
+      messageCount: enhancedMessages.length,
+      hasImages: hasImages,
+      firstUserMessageType: typeof enhancedMessages.find(m => m.role === 'user')?.content
+    });
     
     // Format the request for Pollinations API
     const pollinationsPayload = {
