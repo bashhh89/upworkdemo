@@ -109,18 +109,84 @@ export default function ChatSection() {
   const [artifactTitle, setArtifactTitle] = useState('');
   const [artifactDescription, setArtifactDescription] = useState('');
   
+  // State for AI generated title, description, and prompt
+  const [aiArtifactTitle, setAiArtifactTitle] = useState<string | null>(null);
+  const [aiArtifactDescription, setAiArtifactDescription] = useState<string | null>(null);
+  const [aiPromptUsed, setAiPromptUsed] = useState<string | null>(null);
+  const [isLoadingAISuggestions, setIsLoadingAISuggestions] = useState(false); // New loading state
+
   // Always keep auto-preview enabled since we removed the toggle
   const autoPreviewEnabled = true;
   
   const [isSavingArtifact, setIsSavingArtifact] = useState(false);
 
+  // Function to generate artifact metadata using AI
+  const generateArtifactMetadata = async (code: string, language: string) => {
+    const prompt = `Analyze the following ${language} code snippet and generate a concise title (under 10 words) and a brief description (under 30 words) for it.
+
+Return the response as a JSON object with 'title' and 'description' keys.
+
+Code Snippet:
+\`\`\`${language}
+${code}
+\`\`\`
+`;
+
+    setAiPromptUsed(prompt);
+    setIsLoadingAISuggestions(true); // Start loading
+
+    try {
+      // Call the new API route for AI suggestions
+      const response = await fetch('/api/ai/suggest-snippet-details', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ codeSnippet: code }),
+        // Optional: Add a timeout
+        // signal: AbortSignal.timeout(30000) // 30 second timeout
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error fetching AI suggestions:', response.status, errorText);
+        throw new Error(`Error fetching AI suggestions: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Update state with actual AI suggestions
+      setAiArtifactTitle(data.title || null); // Use null if title is empty
+      setAiArtifactDescription(data.description || null); // Use null if description is empty
+
+    } catch (error) {
+      console.error("Error generating artifact metadata:", error);
+      setAiArtifactTitle("Error fetching title");
+      setAiArtifactDescription("Error fetching description");
+      // setAiPromptUsed(null); // Keep the prompt even on error for debugging
+    } finally {
+      setIsLoadingAISuggestions(false); // Stop loading
+    }
+  };
+
   // Function to toggle the artifact saving form
   const toggleSavingArtifact = () => {
-    setIsSavingArtifact(prev => !prev);
-    // Clear title/description when closing the form
-    if (isSavingArtifact) {
+    const newState = !isSavingArtifact;
+    setIsSavingArtifact(newState);
+    
+    // Clear current title/description and AI suggestions when closing
+    if (!newState) {
       setArtifactTitle('');
       setArtifactDescription('');
+      setAiArtifactTitle(null);
+      setAiArtifactDescription(null);
+      setAiPromptUsed(null);
+      setIsLoadingAISuggestions(false); // Also clear loading state
+    } else {
+       // If opening the form and codePreview exists, generate metadata
+      if (codePreview && codePreview.code && codePreview.language) {
+         generateArtifactMetadata(codePreview.code, codePreview.language);
+      }
     }
   };
 
@@ -933,6 +999,11 @@ export default function ChatSection() {
     saveArtifact: () => void;
     toggleSaving: () => void;
     language: string; // Pass language for placeholder
+    // New props for AI suggestions
+    aiArtifactTitle: string | null;
+    aiArtifactDescription: string | null;
+    aiPromptUsed: string | null;
+    isLoadingAISuggestions: boolean; // New prop for loading state
   }
 
   const ArtifactSaveForm = ({
@@ -944,11 +1015,25 @@ export default function ChatSection() {
     setArtifactDescription,
     saveArtifact,
     toggleSaving,
-    language
+    language,
+    // Destructure new props
+    aiArtifactTitle,
+    aiArtifactDescription,
+    aiPromptUsed,
+    isLoadingAISuggestions // Destructure new prop
   }: ArtifactSaveFormProps) => {
     // Use local state to avoid focus issues with controlled inputs
     const [localTitle, setLocalTitle] = useState(artifactTitle);
     const [localDescription, setLocalDescription] = useState(artifactDescription);
+
+    // Update local state when parent state (possibly from AI) changes
+    useEffect(() => {
+      setLocalTitle(artifactTitle);
+    }, [artifactTitle]);
+
+    useEffect(() => {
+      setLocalDescription(artifactDescription);
+    }, [artifactDescription]);
 
     // Update parent state only when input is complete (blur/submit)
     const updateTitle = (value: string) => {
@@ -960,47 +1045,69 @@ export default function ChatSection() {
       setLocalDescription(value);
       setArtifactDescription(value);
     };
-
-    // Handle local state updates separately from parent state to avoid focus issues
+    
+    // Auto-fill local state with AI suggestions if available when the form opens
     useEffect(() => {
-      setLocalTitle(artifactTitle);
-    }, [artifactTitle]);
+      if (isSaving && aiArtifactTitle !== null && artifactTitle === '' && !isLoadingAISuggestions) {
+        setLocalTitle(aiArtifactTitle);
+        setArtifactTitle(aiArtifactTitle); // Also update parent state
+      }
+      if (isSaving && aiArtifactDescription !== null && artifactDescription === '' && !isLoadingAISuggestions) {
+        setLocalDescription(aiArtifactDescription);
+        setArtifactDescription(aiArtifactDescription); // Also update parent state
+      }
+    }, [isSaving, aiArtifactTitle, aiArtifactDescription, artifactTitle, artifactDescription, setArtifactTitle, setArtifactDescription, isLoadingAISuggestions]);
 
-    useEffect(() => {
-      setLocalDescription(artifactDescription);
-    }, [artifactDescription]);
 
     return (
       <>
         {isSaving && (
           <div className="p-4 border-b border-[#333] bg-[#111] relative z-50">
             <h3 className="text-white text-sm font-medium mb-3">Save this code snippet</h3>
+            {isLoadingAISuggestions && (
+               <p className="text-gray-500 text-xs mb-3 italic">Generating AI suggestions...</p>
+            )}
             <div className="grid gap-3">
               <div>
                 <label className="text-gray-400 text-xs block mb-1">Title</label>
+                {aiArtifactTitle && (
+                  <p className="text-gray-500 text-xs mb-1 italic">AI Suggestion: {aiArtifactTitle}</p>
+                )}
                 <Input
                   value={localTitle}
                   onChange={(e) => setLocalTitle(e.target.value)}
                   onBlur={() => updateTitle(localTitle)}
-                  placeholder={`${language.charAt(0).toUpperCase() + language.slice(1)} snippet`}
+                  placeholder={isLoadingAISuggestions ? "Generating..." : `${language.charAt(0).toUpperCase() + language.slice(1)} snippet`}
                   className="bg-[#0a0a0a] border-[#333] text-white"
+                  disabled={isLoadingAISuggestions}
                 />
               </div>
               <div>
                 <label className="text-gray-400 text-xs block mb-1">Description</label>
+                 {aiArtifactDescription && (
+                  <p className="text-gray-500 text-xs mb-1 italic">AI Suggestion: {aiArtifactDescription}</p>
+                )}
                 <Textarea
                   value={localDescription}
                   onChange={(e) => setLocalDescription(e.target.value)}
                   onBlur={() => updateDescription(localDescription)}
-                  placeholder="Brief description of this code"
+                  placeholder={isLoadingAISuggestions ? "Generating description..." : "Brief description of this code"}
                   className="bg-[#0a0a0a] border-[#333] text-white resize-none h-20"
+                   disabled={isLoadingAISuggestions}
                 />
+                 {!isLoadingAISuggestions && aiPromptUsed && (
+                  <div className="mt-2 text-gray-600 text-xs">
+                    <p className="font-medium mb-1">AI Prompt Used:</p>
+                    <p className="italic whitespace-pre-wrap">{aiPromptUsed}</p>
+                  </div>
+                )}
               </div>
               <div className="flex justify-end gap-2">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => setIsSaving(false)}
+                   disabled={isLoadingAISuggestions}
                 >
                   Cancel
                 </Button>
@@ -1014,6 +1121,7 @@ export default function ChatSection() {
                     saveArtifact();
                     toggleSaving(); // Use the passed-in toggle function
                   }}
+                   disabled={isLoadingAISuggestions || !localTitle.trim() || !localDescription.trim()} // Disable save button while loading or if fields are empty
                 >
                   Save
                 </Button>
@@ -2450,7 +2558,6 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
           </div>
         )}
       </div>
-      
       {/* Main chat interface */}
       <div className="flex-1 flex flex-col overflow-hidden bg-[#000000]">
         {/* Chat messages area */}

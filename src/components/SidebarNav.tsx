@@ -336,7 +336,7 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
     if (item.externalLink) {
       return (
         <div key={item.id} className={cn("space-y-1", isSubItem ? (isExpanded ? "ml-6 mt-1" : "") : "")}>
-          <Link href={item.externalLink} className={buttonClasses}>
+          <Link href={item.externalLink} className={buttonClasses} legacyBehavior>
             {itemContent}
           </Link>
         </div>
@@ -406,7 +406,6 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
            {isExpanded ? <ChevronLeft className="h-5 w-5" /> : <Menu className="h-5 w-5" />} {/* Toggle icon */}
          </button>
       </div>
-
       {/* Nav groups */}
       <div className="flex-1 px-2 space-y-1 overflow-auto">
         {navGroups.map((group) => (
@@ -446,9 +445,8 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
                   </div>
                 ) : (
                    isExpanded && ( // Only show message when expanded
-                    <div className="px-3 py-2 text-xs text-gray-500 italic">
-                      Chat threads will appear here when you start a chat.
-                    </div>
+                    (<div className="px-3 py-2 text-xs text-gray-500 italic">Chat threads will appear here when you start a chat.
+                                          </div>)
                    )
                 )}
               </div>
@@ -463,7 +461,6 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
           </div> {/* Closes div on line 434 */}
         </div> {/* Closes div on line 427 */}
       </div> {/* Closes div on line 412 */}
-
       {/* User profile */}
       <div className={cn("border-t border-[#333333] mt-auto px-3 py-4", isExpanded ? "block" : "flex flex-col items-center")}>
         <div className={cn("flex items-center", isExpanded ? "space-x-3" : "flex-col space-y-2")}>
@@ -481,7 +478,7 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
           )}
         </div>
       </div>
-    {/* Closes div on line 397 */}
+      {/* Closes div on line 397 */}
     </div>
   );
 }

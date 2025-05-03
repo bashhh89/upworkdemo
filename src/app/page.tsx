@@ -76,13 +76,13 @@ export default function Home() {
                 Your intelligent partner for marketing and sales tasks with specialized tools
               </p>
               <div className="flex justify-center mt-10 gap-4">
-                <Link href="/chat">
+                <Link href="/chat" legacyBehavior>
                   <Button size="lg" className="gap-2">
                     <MessageSquare className="h-5 w-5" />
                     Open Chat
                   </Button>
                 </Link>
-                <Link href="/test-tools">
+                <Link href="/test-tools" legacyBehavior>
                   <Button size="lg" variant="outline" className="gap-2">
                     <Wrench className="h-5 w-5" />
                     Explore Tools
@@ -91,7 +91,6 @@ export default function Home() {
               </div>
             </div>
           </header>
-
           <main className="py-16 container mx-auto px-4">
             <section className="mb-16">
               <h2 className="text-3xl font-bold mb-10 text-center">Specialized Tools</h2>
@@ -113,7 +112,7 @@ export default function Home() {
                     </code>
                   </CardContent>
                   <CardFooter>
-                    <Link href="/chat?tool=website" className="w-full">
+                    <Link href="/chat?tool=website" className="w-full" legacyBehavior>
                       <Button variant="outline" className="w-full border-blue-800 hover:bg-blue-900/20">
                         Use Tool <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
@@ -138,7 +137,7 @@ export default function Home() {
                     </code>
                   </CardContent>
                   <CardFooter>
-                    <Link href="/chat?tool=executive" className="w-full">
+                    <Link href="/chat?tool=executive" className="w-full" legacyBehavior>
                       <Button variant="outline" className="w-full border-purple-800 hover:bg-purple-900/20">
                         Use Tool <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
@@ -163,7 +162,7 @@ export default function Home() {
                     </code>
                   </CardContent>
                   <CardFooter>
-                    <Link href="/chat?tool=deal" className="w-full">
+                    <Link href="/chat?tool=deal" className="w-full" legacyBehavior>
                       <Button variant="outline" className="w-full border-green-800 hover:bg-green-900/20">
                         Use Tool <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
@@ -178,14 +177,13 @@ export default function Home() {
               <p className="text-gray-400 max-w-2xl mx-auto mb-8">
                 Start a conversation with our AI assistant and use specialized tools to power up your marketing and sales efforts.
               </p>
-              <Link href="/chat">
+              <Link href="/chat" legacyBehavior>
                 <Button size="lg" className="px-8">
                   Open Chat Interface
                 </Button>
               </Link>
             </section>
           </main>
-
           <footer className="py-10 border-t border-[#222] mt-20">
             <div className="container mx-auto px-4 text-center text-gray-500">
               <p>Deliver AI Assistant © 2024 | Powered by advanced AI tools for marketing and sales</p>
