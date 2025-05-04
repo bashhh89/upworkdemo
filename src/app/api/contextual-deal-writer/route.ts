@@ -97,7 +97,7 @@ function extractDomainFromUrl(url: string): string {
     
     // Format nicely for display
     return domain.charAt(0).toUpperCase() + domain.slice(1);
-  } catch (error) {
+  } catch {
     return url;
   }
 }

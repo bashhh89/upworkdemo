@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { ChevronRight, KanbanSquare, ClipboardList, BrainCircuit, Calculator, BookOpen, Image, Mic, MessageSquare, MessageSquareWarning, Globe, Palette, Home, Layers, User, Users, MessagesSquare, Sparkles, Menu, ChevronLeft, Plus, Trash2, CheckIcon, ArchiveIcon } from 'lucide-react'; // Added Plus and Trash2
+import { ChevronRight, KanbanSquare, ClipboardList, BrainCircuit, Calculator, BookOpen, Image, Mic, MessageSquare, MessageSquareWarning, Globe, Palette, Home, Layers, User, Users, MessagesSquare, Sparkles, Menu, ChevronLeft, Plus, Trash2, CheckIcon, ArchiveIcon, LayoutDashboard } from 'lucide-react'; // Added Plus, Trash2, and LayoutDashboard
 import Link from 'next/link';
 import {
   Accordion,
@@ -32,6 +32,8 @@ interface NavGroup {
 interface SidebarNavProps {
   activeSection: string;
   onSectionChange: (sectionId: string) => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
 }
 
 // Group the navigation items
@@ -41,7 +43,7 @@ const navGroups: NavGroup[] = [
     items: [
       {
         name: 'Dashboard',
-        id: 'dashboard',
+        id: 'home', // Changed id from 'dashboard' to 'home'
         icon: Layers,
         subItems: [
           {
@@ -76,6 +78,12 @@ const navGroups: NavGroup[] = [
         icon: Sparkles,
         status: 'fully',
         externalLink: '/agent-studio'
+      },
+      {
+        name: 'Resource Library',
+        id: 'resources',
+        icon: BookOpen,
+        status: 'planned'
       }
     ]
   },
@@ -176,6 +184,12 @@ const navGroups: NavGroup[] = [
         status: 'fully'
       },
       {
+        name: 'AI Presentations',
+        id: 'presentation-generator',
+        icon: LayoutDashboard,
+        status: 'planned'
+      },
+      {
         name: 'AI Brand Foundation',
         id: 'brand_foundation',
         icon: Palette,
@@ -189,26 +203,15 @@ const navGroups: NavGroup[] = [
       }
     ]
   },
-  {
-    name: 'Resources',
-    items: [
-      {
-        name: 'Resource Library',
-        id: 'resources',
-        icon: BookOpen,
-        status: 'planned'
-      }
-    ]
-  }
 ];
 
-export default function SidebarNav({ activeSection, onSectionChange, isExpanded, onToggleExpand }: SidebarNavProps & { isExpanded: boolean; onToggleExpand: () => void }) {
+export default function SidebarNav({ activeSection, onSectionChange, isExpanded, onToggleExpand }: SidebarNavProps) {
   // State for models
   const [textModels, setTextModels] = useState<TextModel[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("openai");
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
-  
+
   // Replace the useAssistantRuntime and useThreadList implementation
   const [runtimeAvailable, setRuntimeAvailable] = useState(false);
   // Mock runtime and threadStore with empty objects that have required methods
@@ -216,7 +219,7 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
     updateConfig: (config: any) => console.log('Mock: updateConfig called with', config),
     setConfig: (config: any) => console.log('Mock: setConfig called with', config)
   };
-  
+
   const threadStore = {
     threads: [],
     currentThreadId: null,
@@ -227,12 +230,12 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
     },
     archiveThread: (threadId: string) => console.log('Mock: archiveThread called with', threadId)
   };
-  
+
   // Set mounted state after client-side hydration
   useEffect(() => {
     setMounted(true);
   }, []);
-  
+
   // Fetch available text models
   useEffect(() => {
     async function fetchModels() {
@@ -255,7 +258,7 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
       fetchModels();
     }
   }, [mounted]);
-  
+
   // Handle model selection change
   const handleModelChange = (value: string) => {
     setSelectedModel(value);
@@ -266,20 +269,20 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
         if (typeof runtime.updateConfig === 'function') {
           runtime.updateConfig({
             body: {
-              model: value.startsWith("pollinations") 
-                ? value 
-                : value === "openai" 
-                  ? "gpt-4o" 
+              model: value.startsWith("pollinations")
+                ? value
+                : value === "openai"
+                  ? "gpt-4o"
                   : value
             }
           });
         } else if (typeof runtime.setConfig === 'function') {
           runtime.setConfig({
             body: {
-              model: value.startsWith("pollinations") 
-                ? value 
-                : value === "openai" 
-                  ? "gpt-4o" 
+              model: value.startsWith("pollinations")
+                ? value
+                : value === "openai"
+                  ? "gpt-4o"
                   : value
             }
           });
@@ -289,7 +292,7 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
       }
     }
   };
-  
+
   // Create new thread
   const handleNewThread = () => {
     if (threadStore && runtimeAvailable) {
@@ -301,7 +304,7 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
       onSectionChange('pollinations-assistant');
     }
   };
-  
+
   // Select a thread
   const handleSelectThread = (threadId: string) => {
     if (threadStore && runtimeAvailable) {
@@ -312,7 +315,7 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
       }
     }
   };
-  
+
   // Archive (delete) a thread
   const handleArchiveThread = (threadId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -320,45 +323,32 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
       threadStore.archiveThread(threadId);
     }
   };
-  
-  const renderNavItem = (item: NavItem, isSubItem = false) => {
+
+  const renderNavItem = (item: NavItem) => {
     const isActive = activeSection === item.id;
-    const isParentActive = item.subItems?.some(subItem => activeSection === subItem.id);
     const Icon = item.icon;
 
+    // Adjusted classes for items within accordions
     const buttonClasses = cn(
       "w-full flex items-center text-sm transition-colors duration-150 px-3 py-2",
       isExpanded ? "justify-start" : "justify-center",
       isActive
-        ? isExpanded // Apply active style differently based on expanded state
-           ? "text-white font-medium bg-[#0a0a0a]" // Expanded active: background
-           : "text-white font-medium border border-sky-600 bg-[#0a0a0a] rounded-md" // Collapsed active: tile style
-        : isExpanded // Apply default style differently based on expanded state
-          ? "text-gray-300 hover:bg-[#111] hover:text-white" // Expanded default: simple hover
-          : "text-gray-300 hover:bg-[#111] hover:text-white border border-[#333333] bg-[#0a0a0a] rounded-md" // Collapsed default: tile style
+        ? "text-white font-medium bg-[#0a0a0a]" // Active item style
+        : "text-gray-300 hover:bg-[#111] hover:text-white" // Default item style
     );
 
     const contentClasses = cn("flex items-center flex-1", { "justify-center": !isExpanded });
 
-    // Always render the button/link, hide text/status when collapsed
     const itemContent = (
        <div className={contentClasses}>
          <Icon className={cn("flex-shrink-0 h-4 w-4", isExpanded ? "mr-3" : "mr-0")} />
          {isExpanded && <span className="flex-1 text-left truncate text-white">{item.name}</span>}
-         {isExpanded && item.status === 'partial' && <span className="ml-2 text-[#a0a0a0] text-xs">[WIP]</span>}
-         {isExpanded && item.status === 'planned' && <span className="ml-2 text-[#a0a0a0] text-xs">[Planned]</span>}
-         {isExpanded && item.subItems && !isSubItem && (
-           <ChevronRight className={cn(
-             "h-4 w-4 transition-transform ml-auto",
-             isParentActive && "rotate-90"
-           )} />
-         )}
        </div>
     );
 
     if (item.externalLink) {
       return (
-        <div key={item.id} className={cn("space-y-1", isSubItem ? (isExpanded ? "ml-6 mt-1" : "") : "")}>
+        <div key={item.id}> {/* Removed conditional margin */}
           <Link href={item.externalLink} className={buttonClasses}>
             {itemContent}
           </Link>
@@ -367,30 +357,25 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
     }
 
     return (
-      <div key={item.id} className={cn("space-y-1", isSubItem ? (isExpanded ? "ml-6 mt-1" : "") : "")}> {/* Adjusted margin for collapsed state */}
+      <div key={item.id}> {/* Removed conditional margin */}
         <button onClick={() => onSectionChange(item.id)} className={buttonClasses}>
           {itemContent}
         </button>
-        {(isParentActive || isActive) && isExpanded && item.subItems?.map((subItem, index) => (
-          <React.Fragment key={`${item.id}-subitem-${index}-${subItem.id}`}>
-            {renderNavItem(subItem, true)}
-          </React.Fragment>
-        ))}
       </div>
     );
   };
-  
+
   // Render thread item
   const renderThreadItem = (thread: any) => {
     if (!isExpanded) return null; // Only render threads when sidebar is expanded
-    
+
     const isActive = threadStore?.currentThreadId === thread.id;
     const threadTitle = thread.title || 'New Thread';
     const threadDate = new Date(thread.createdAt).toLocaleDateString();
     const messageCount = thread.messages?.length || 0;
-    
+
     return (
-      <div 
+      <div
         key={thread.id || `thread-${messageCount}`}
         className={cn(
           "px-3 py-2 cursor-pointer hover:bg-[#111] flex justify-between items-center",
@@ -414,94 +399,96 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
       </div>
     );
   };
-  
+
+  // For server rendering
+  if (!mounted) return null;
+
+  // Top level items that are directly shown without accordion
+  const topLevelItems = navGroups.find(group => group.name === 'Navigation')?.items || [];
+  const accordionGroups = navGroups.filter(group => group.name !== 'Navigation') || [];
+
   return (
     <div className={cn("flex flex-col h-full transition-width duration-300 ease-in-out", isExpanded ? "w-64" : "w-20")}>
       {/* Logo and Toggle */}
-      <div className={cn("mb-6 flex items-center", isExpanded ? "justify-between px-3" : "justify-center px-3")}>
-         {isExpanded && (
-           <div>
-             <h1 className="text-xl font-bold text-white">Deliver AI</h1>
-             <p className="text-xs text-gray-500">Your AI Toolkit</p>
-           </div>
-         )}
-         <button onClick={onToggleExpand} className="p-2 rounded-md hover:bg-[#111] text-gray-300 hover:text-white transition-colors">
-           {isExpanded ? <ChevronLeft className="h-5 w-5" /> : <Menu className="h-5 w-5" />} {/* Toggle icon */}
-         </button>
+      <div className="flex items-center justify-between px-4 py-6">
+        {isExpanded ? (
+          <span className="font-medium text-white">Deliver AI</span>
+        ) : (
+          <span className="w-8 h-8 bg-[#2563eb] rounded-full flex items-center justify-center text-white font-bold text-sm">AI</span>
+        )}
+        <button
+          onClick={onToggleExpand}
+          className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-[#222]"
+        >
+          {isExpanded ? <ChevronLeft className="h-4 w-4 text-gray-400" /> : <Menu className="h-4 w-4 text-gray-400" />}
+        </button>
       </div>
-      {/* Nav groups */}
-      <div className="flex-1 px-2 space-y-1 overflow-auto">
-        {navGroups.map((group) => (
-          <div key={group.name} className="mb-6">
-            {isExpanded && (
-              <h2 className="mb-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                {group.name}
-              </h2>
-            )}
+
+      {/* Navigation items */}
+      <div className="flex-1 overflow-y-auto px-2 pb-6">
+        {/* Top level navigation items (Dashboard, Chat, etc.) */}
+        <div className="space-y-1 mb-2">
+          {topLevelItems?.map(item => renderNavItem(item))}
+        </div>
+
+        {/* Threads section - Only show when threadStore is available */}
+        {isExpanded && runtimeAvailable && threadStore && threadStore.threads && threadStore.threads.length > 0 && (
+          <div className="mb-4">
+            <h3 className="px-3 mb-1 text-xs uppercase tracking-wider text-gray-400">Threads</h3>
             <div className="space-y-1">
-              {group.items.map((item) => renderNavItem(item))}
+              {threadStore.threads?.map(renderThreadItem)}
             </div>
           </div>
-        ))}
-        
-        {/* AI CHAT Section - Show even without context but with limited functionality */}
-        <div className="mb-6">
-          {isExpanded && (
-            <h2 className="mb-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              AI CHAT
-            </h2>
-          )}
-          
-          <div className="space-y-3">
-            {/* New Thread Button - Only show when not on Chat page */}
-            {/* Thread List - Only show when runtime is available */}
-            {isExpanded && threadStore && runtimeAvailable && threadStore.threads && (
-              <div className="mt-1"> {/* Adjusted margin */}
-                {/* Thread List - Only show when runtime is available */}
-                {threadStore.threads.length > 0 ? (
-                  <div className="divide-y divide-[#222]">
-                    {threadStore.threads.map((thread, index) => (
-                      <React.Fragment key={thread.id || `thread-${index}`}>
-                        {renderThreadItem(thread)}
-                      </React.Fragment>
-                    ))}
-                  </div>
-                ) : (
-                   isExpanded && ( // Only show message when expanded
-                    (<div className="px-3 py-2 text-xs text-gray-500 italic">Chat threads will appear here when you start a chat.
-                                          </div>)
-                   )
-                )}
-              </div>
-            )}
+        )}
 
-            {/* Show a message when expanded but runtime is not available */}
-            {isExpanded && !runtimeAvailable && (
-              <div className="px-3 py-2 text-xs text-gray-400">
-                Chat threads will appear here when you start a chat
-              </div>
-            )}
-          </div> {/* Closes div on line 434 */}
-        </div> {/* Closes div on line 427 */}
-      </div> {/* Closes div on line 412 */}
+        {/* Navigation accordions by group */}
+        <Accordion
+          type="multiple"
+          className="space-y-1"
+        >
+          {accordionGroups?.map(group => (
+            <AccordionItem
+              key={group.name}
+              value={group.name}
+              className="border-b-0 px-0"
+            >
+              <AccordionTrigger className={cn(
+                "py-2 px-3 hover:bg-[#111] hover:no-underline text-sm",
+                isExpanded ? "justify-between" : "justify-center"
+              )}>
+                {isExpanded ? (
+                  <span className="text-gray-300">{group.name}</span>
+                ) : (
+                  <span className="text-xs text-gray-500 rotate-90 w-1">•••</span>
+                )}
+              </AccordionTrigger>
+              <AccordionContent className="p-0">
+                <div className={cn("space-y-1", isExpanded ? "pl-1" : "px-0")}>
+                  {group.items?.map(item => renderNavItem(item))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </div>
+
       {/* User profile */}
       <div className={cn("border-t border-[#333333] mt-auto px-3 py-4", isExpanded ? "block" : "flex flex-col items-center")}>
         <div className={cn("flex items-center", isExpanded ? "space-x-3" : "flex-col space-y-2")}>
-          <div className="relative flex-shrink-0">
-             <div className="h-10 w-10 bg-[#333] rounded-full flex items-center justify-center text-white">
-               AB
-             </div>
-             <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-[#0a0a0a]"></span>
+          <div className="relative">
+            <div className="h-10 w-10 bg-[#333] rounded-full flex items-center justify-center text-white">
+              AB
+            </div>
+            <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-[#0a0a0a]"></span>
           </div>
           {isExpanded && (
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-white">Ahmad Basheer</span>
-              <span className="text-xs text-gray-500">Pro Plan</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">Ahmad Basheer</p>
+              <p className="text-xs text-gray-500">Pro Plan</p>
             </div>
           )}
         </div>
       </div>
-      {/* Closes div on line 397 */}
     </div>
   );
 }

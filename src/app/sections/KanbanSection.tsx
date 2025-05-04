@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react'; // Added useMemo
@@ -28,13 +27,27 @@ import {
 } from "@/components/ui/select"; // Imported Shadcn Select components
 import { KanbanTaskDetailModal } from '@/components/kanban-task-detail-modal';
 import { PipelineCustomizationModal } from '@/components/pipeline-customization-modal'; // Import the new modal
+import { PlusCircle, Sparkles } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Task {
   id: UniqueIdentifier;
   content: string;
-  phase: string; // Corresponds to a stage name
+  phase: string;
   priority: string;
-  pipelineId: string; // Added pipelineId
+  pipelineId: string;
+  description?: string;
+  assignee?: string;
+  dueDate?: string;
+  created?: string;
+  labels?: string[];
 }
 
 // Define Pipeline interface
@@ -43,6 +56,13 @@ interface Pipeline {
   name: string;
   type: string; // e.g., 'tasks', 'leads', 'custom'
   stages: string[]; // Array of stage names (columns)
+  customFields?: {
+    id: string;
+    label: string;
+    type: string;
+    required: boolean;
+    options?: string[];
+  }[];
 }
 
 interface TasksState {
@@ -50,6 +70,80 @@ interface TasksState {
     [stage: string]: Task[];
   };
 }
+
+// Add this interface for task types to handle different pipeline contexts
+interface TaskTypeConfig {
+  [pipelineType: string]: {
+    itemName: string;  // What we call items in this pipeline (task, lead, candidate, etc.)
+    fields: {
+      name: string;
+      label: string;
+      type: 'text' | 'textarea' | 'select' | 'date';
+      required?: boolean;
+      options?: { value: string; label: string }[];
+    }[];
+  };
+}
+
+// Configuration for different pipeline types
+const PIPELINE_TYPE_CONFIG: TaskTypeConfig = {
+  'tasks': {
+    itemName: 'Task',
+    fields: [
+      { name: 'content', label: 'Task Description', type: 'textarea', required: true },
+      { name: 'priority', label: 'Priority', type: 'select', 
+        options: [
+          { value: 'High', label: 'High' },
+          { value: 'Medium', label: 'Medium' },
+          { value: 'Low', label: 'Low' }
+        ]
+      }
+    ]
+  },
+  'leads': {
+    itemName: 'Lead',
+    fields: [
+      { name: 'content', label: 'Company/Lead Name', type: 'text', required: true },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'priority', label: 'Priority', type: 'select',
+        options: [
+          { value: 'High', label: 'High Value' },
+          { value: 'Medium', label: 'Medium Value' },
+          { value: 'Low', label: 'Low Value' }
+        ]
+      },
+      { name: 'dueDate', label: 'Follow-up Date', type: 'date' }
+    ]
+  },
+  'recruitment': {
+    itemName: 'Candidate',
+    fields: [
+      { name: 'content', label: 'Candidate Name', type: 'text', required: true },
+      { name: 'description', label: 'Notes', type: 'textarea' },
+      { name: 'priority', label: 'Experience Level', type: 'select',
+        options: [
+          { value: 'High', label: 'Senior' },
+          { value: 'Medium', label: 'Mid-level' },
+          { value: 'Low', label: 'Junior' }
+        ]
+      }
+    ]
+  },
+  'custom': {
+    itemName: 'Item',
+    fields: [
+      { name: 'content', label: 'Title', type: 'text', required: true },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'priority', label: 'Priority', type: 'select',
+        options: [
+          { value: 'High', label: 'High' },
+          { value: 'Medium', label: 'Medium' },
+          { value: 'Low', label: 'Low' }
+        ]
+      }
+    ]
+  }
+};
 
 // Mock Pipeline Data
 const initialPipelines: Pipeline[] = [
@@ -61,13 +155,19 @@ const initialPipelines: Pipeline[] = [
   },
   {
     id: 'leads-pipeline',
-    name: 'Sales Leads [Planned]',
+    name: 'Sales Leads',
     type: 'leads',
     stages: ['New Lead', 'Contacted', 'Qualified', 'Closed'],
   },
+  {
+    id: 'recruitment-pipeline',
+    name: 'Recruitment',
+    type: 'recruitment', 
+    stages: ['Applied', 'Screening', 'Interview', 'Offer', 'Hired'],
+  }
 ];
 
-// Mock Task Data (updated to include pipelineId)
+// Mock Task Data (updated to include all pipeline types)
 const initialTasks: TasksState = {
   'tasks-pipeline': {
     'To Do': [
@@ -86,29 +186,61 @@ const initialTasks: TasksState = {
   },
   'leads-pipeline': {
     'New Lead': [
-       { id: 'lead-1', content: 'Contact potential client A', phase: 'New Lead', priority: 'High', pipelineId: 'leads-pipeline' },
-       { id: 'lead-2', content: 'Research company B', phase: 'New Lead', priority: 'Medium', pipelineId: 'leads-pipeline' },
+      { id: 'lead-1', content: 'Acme Corporation', phase: 'New Lead', priority: 'High', pipelineId: 'leads-pipeline', description: 'Interested in AI solutions' },
+      { id: 'lead-2', content: 'TechStart Inc.', phase: 'New Lead', priority: 'Medium', pipelineId: 'leads-pipeline', description: 'Small startup looking for marketing automation' },
     ],
     'Contacted': [],
     'Qualified': [],
     'Closed': [],
   },
+  'recruitment-pipeline': {
+    'Applied': [
+      { id: 'candidate-1', content: 'John Smith', phase: 'Applied', priority: 'High', pipelineId: 'recruitment-pipeline', description: 'Frontend Developer with 5 years experience' },
+      { id: 'candidate-2', content: 'Lisa Johnson', phase: 'Applied', priority: 'Medium', pipelineId: 'recruitment-pipeline', description: 'UI/UX Designer' },
+    ],
+    'Screening': [],
+    'Interview': [],
+    'Offer': [],
+    'Hired': [],
+  }
 };
 
+// Add this to keep track of form field values for different fields
+interface FormValues {
+  [key: string]: string;
+}
+
+// Add this new interface for creating a task directly via modal
+interface AddTaskModalState {
+  isOpen: boolean;
+  stageName: string;
+}
 
 export default function KanbanSection() {
   const { toast } = useToast();
   const [pipelines, setPipelines] = useState<Pipeline[]>(initialPipelines);
   const [activePipelineId, setActivePipelineId] = useState(initialPipelines[0].id);
-  const [tasks, setTasks] = useState<TasksState>(initialTasks); // Tasks are now nested by pipeline and stage
+  const [tasks, setTasks] = useState<TasksState>(initialTasks);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
-  const [aiGoalInput, setAiGoalInput] = useState(''); // Used for task generation (specific to task pipeline)
+  const [aiGoalInput, setAiGoalInput] = useState('');
   const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
 
   // State for the modals
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // Renamed for clarity
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false); // State for customization modal
+  const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false);
+  
+  // New state for add task modal
+  const [addTaskModal, setAddTaskModal] = useState<AddTaskModalState>({
+    isOpen: false,
+    stageName: ''
+  });
+  const [formValues, setFormValues] = useState<FormValues>({
+    content: '',
+    description: '',
+    priority: 'Medium',
+    dueDate: '',
+  });
 
   // Handler for card click (Detail Modal)
   const handleCardClick = (task: Task) => {
@@ -122,20 +254,112 @@ export default function KanbanSection() {
     setSelectedTask(null);
   };
 
-   // Handler to close the Customization Modal
+  // Handler to close the Customization Modal
   const handleCloseCustomizationModal = () => {
     setIsCustomizationModalOpen(false);
+  };
+
+  // Get current pipeline type
+  const activePipelineType = useMemo(() => {
+    return pipelines.find(p => p.id === activePipelineId)?.type || 'custom';
+  }, [pipelines, activePipelineId]);
+
+  // Get the item name based on pipeline type
+  const currentItemName = useMemo(() => {
+    return PIPELINE_TYPE_CONFIG[activePipelineType]?.itemName || 'Item';
+  }, [activePipelineType]);
+
+  // Get the fields for the current pipeline type
+  const currentFields = useMemo(() => {
+    return PIPELINE_TYPE_CONFIG[activePipelineType]?.fields || PIPELINE_TYPE_CONFIG.custom.fields;
+  }, [activePipelineType]);
+
+  // Handler to open Add Task modal
+  const handleOpenAddTaskModal = (stageName: string) => {
+    setAddTaskModal({
+      isOpen: true,
+      stageName
+    });
+
+    // Reset form values
+    const initialValues: FormValues = {};
+    currentFields.forEach(field => {
+      if (field.name === 'priority' && field.options && field.options.length > 0) {
+        initialValues[field.name] = field.options[1]?.value || field.options[0]?.value || '';
+      } else {
+        initialValues[field.name] = '';
+      }
+    });
+    setFormValues(initialValues);
+  };
+
+  // Handler to close Add Task modal
+  const handleCloseAddTaskModal = () => {
+    setAddTaskModal({
+      isOpen: false,
+      stageName: ''
+    });
+  };
+
+  // Handler to save a new task from modal
+  const handleSaveNewTask = () => {
+    // Check required fields
+    const contentField = currentFields.find(f => f.name === 'content');
+    if (contentField?.required && !formValues.content?.trim()) {
+      toast({ 
+        title: "Error", 
+        description: `${contentField.label} cannot be empty`, 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    const newTask = {
+      id: uuidv4(),
+      content: formValues.content?.trim(),
+      description: formValues.description || undefined,
+      dueDate: formValues.dueDate || undefined,
+      phase: addTaskModal.stageName,
+      priority: formValues.priority || 'Medium',
+      pipelineId: activePipelineId,
+    };
+
+    addTaskManually(newTask, addTaskModal.stageName, activePipelineId);
+    handleCloseAddTaskModal();
+  };
+
+  // Handler to update form values
+  const handleFormChange = (field: string, value: string) => {
+    setFormValues(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   // Handler to save a new pipeline
   const handleSaveNewPipeline = (newPipeline: Pipeline) => {
     setPipelines([...pipelines, newPipeline]);
-    // Optionally set the new pipeline as active: setActivePipelineId(newPipeline.id);
-    setTasks({ ...tasks, [newPipeline.id]: Object.fromEntries(newPipeline.stages.map(stage => [stage, []])) }); // Initialize empty tasks for new pipeline
+    setTasks({ ...tasks, [newPipeline.id]: Object.fromEntries(newPipeline.stages.map(stage => [stage, []])) });
     handleCloseCustomizationModal();
     toast({ title: "Success!", description: `Pipeline "${newPipeline.name}" created.` });
   };
 
+  // Function to add a task manually
+  const addTaskManually = (taskData: Task, targetStageName: string, targetPipelineId: string) => {
+    setTasks(prevTasks => {
+      const updatedPipelineTasks = { ...prevTasks[targetPipelineId] };
+      if (updatedPipelineTasks[targetStageName]) {
+        updatedPipelineTasks[targetStageName] = [taskData, ...updatedPipelineTasks[targetStageName]];
+      } else {
+        updatedPipelineTasks[targetStageName] = [taskData];
+      }
+      return {
+        ...prevTasks,
+        [targetPipelineId]: updatedPipelineTasks,
+      };
+    });
+    toast({ title: "Success!", description: `Task "${taskData.content}" added to stage "${targetStageName}".` });
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -455,27 +679,27 @@ export default function KanbanSection() {
   }
 
   return (
-    <div className="space-y-8 text-white max-w-7xl mx-auto">
+    <div className="space-y-6 text-zinc-200 max-w-7xl mx-auto px-4">
       {/* Page Title */}
-      <div className="space-y-4">
-        <h1 className="text-3xl font-bold">Kanban Task View</h1>
-        <h2 className="text-xl font-semibold text-gray-400">Manage Implementation Tasks Across Pipelines</h2> {/* Updated subtitle */}
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold text-zinc-100">Kanban Task View</h1>
+        <h2 className="text-base text-zinc-400">Manage Implementation Tasks Across Pipelines</h2>
       </div>
 
-      {/* Pipeline Selection and Creation */}
-      <div className="flex items-center gap-6 mb-6"> {/* Generous gap */}
-        <div className="flex items-center gap-2">
-          <span className="text-gray-400 font-semibold">Pipeline:</span>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-zinc-800/50">
+        {/* Pipeline Selection */}
+        <div className="flex items-center gap-3">
+          <span className="text-zinc-400 text-sm font-medium">Pipeline:</span>
           <Select value={activePipelineId} onValueChange={setActivePipelineId}>
-            <SelectTrigger className="w-[240px] bg-[#111111] border border-[#333333] text-white rounded-none focus:ring-offset-[#000000]"> {/* Styled Select Trigger */}
+            <SelectTrigger className="w-[240px] bg-zinc-900 border-zinc-700 text-zinc-200 rounded-md focus:ring-zinc-600 focus-visible:ring-offset-zinc-900">
               <SelectValue placeholder="Select a pipeline" />
             </SelectTrigger>
-            <SelectContent className="bg-[#0a0a0a] border border-[#333333] text-white rounded-none"> {/* Styled Select Content */}
+            <SelectContent className="bg-zinc-900 border-zinc-700 text-zinc-200 rounded-md">
               {pipelines.map(pipeline => (
                 <SelectItem
                   key={pipeline.id}
                   value={pipeline.id}
-                  className="focus:bg-[#333333] focus:text-white" // Styled Select Item on focus
+                  className="focus:bg-zinc-800 focus:text-zinc-200"
                 >
                   {pipeline.name}
                 </SelectItem>
@@ -483,32 +707,41 @@ export default function KanbanSection() {
             </SelectContent>
           </Select>
         </div>
-         <Button
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3">
+          {/* Only show AI task generation for tasks pipeline */}
+          {activePipelineId === 'tasks-pipeline' && (
+            <div className="relative flex-grow w-full md:w-auto">
+              <Input
+                id="ai-task-input"
+                type="text"
+                placeholder="Generate tasks with AI..."
+                value={aiGoalInput}
+                onChange={(e) => setAiGoalInput(e.target.value)}
+                disabled={isGeneratingTasks}
+                className="pr-[130px] bg-zinc-800/80 border-zinc-700/50 text-zinc-200 placeholder:text-zinc-500 rounded-md h-10 focus-visible:ring-zinc-600 focus-visible:ring-offset-zinc-900"
+              />
+              <Button 
+                onClick={handleGenerateTasks} 
+                disabled={isGeneratingTasks || !aiGoalInput.trim()} 
+                className="absolute right-0 top-0 rounded-l-none bg-zinc-700 hover:bg-zinc-600 text-zinc-200 font-medium h-10 px-3 flex items-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4 text-blue-300" />
+                {isGeneratingTasks ? "Generating..." : "Generate"}
+              </Button>
+            </div>
+          )}
+          
+          <Button
             onClick={() => setIsCustomizationModalOpen(true)}
-            className="bg-white text-black font-semibold hover:bg-gray-200 transition-colors duration-150 rounded-none" // Styled Button
+            className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium rounded-md flex items-center gap-1.5 whitespace-nowrap"
           >
-            Create New Pipeline
+            <PlusCircle className="w-4 h-4 text-blue-300" />
+            Create Pipeline
           </Button>
+        </div>
       </div>
-
-
-       {/* AI Task Generation Input (Only for Task Management Pipeline) */}
-       {activePipelineId === 'tasks-pipeline' && (
-          <div className="flex flex-col sm:flex-row gap-2 mb-6">
-            <Input
-              type="text"
-              placeholder="Enter goal for AI tasks (e.g., Phase 2 deployment)"
-              value={aiGoalInput}
-              onChange={(e) => setAiGoalInput(e.target.value)}
-              disabled={isGeneratingTasks}
-              className="flex-grow bg-[#111111] border-gray-400 placeholder:text-gray-400 text-white rounded-none" // Styled Input
-            />
-            <Button onClick={handleGenerateTasks} disabled={isGeneratingTasks} className="w-full sm:w-auto bg-white text-black font-semibold hover:bg-gray-200 transition-colors duration-150 rounded-none"> {/* Styled Button */}
-              {isGeneratingTasks ? "Generating..." : "Generate Tasks with AI"}
-            </Button>
-          </div>
-       )}
-
 
       <DndContext
         sensors={sensors}
@@ -517,32 +750,130 @@ export default function KanbanSection() {
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-1 md:grid-flow-col md:auto-cols-fr gap-6"> {/* Use a dynamic grid template based on active pipeline stages */}
-           {activePipeline.stages.map((stage) => (
-             <KanbanColumn
-               key={stage} // Use stage name as key
-               id={stage} // Use stage name as id for DND context
-               title={stage} // Use stage name as title
-               tasks={tasksForActivePipeline[stage] || []} // Pass tasks for this stage
-               onCardClick={handleCardClick}
-             />
-           ))}
-         </div>
-       </DndContext>
+        <div className="overflow-x-auto custom-scrollbar pb-4">
+          <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+            {activePipeline.stages.map((stage) => (
+              <KanbanColumn
+                key={stage}
+                id={stage}
+                title={stage}
+                tasks={tasksForActivePipeline[stage] || []}
+                onCardClick={handleCardClick}
+                handleAddTaskClick={() => handleOpenAddTaskModal(stage)}
+                activePipelineId={activePipelineId}
+                itemName={currentItemName}
+              />
+            ))}
+          </div>
+        </div>
+      </DndContext>
 
-       {/* Render the Task Detail Modal */}
-       <KanbanTaskDetailModal
-         task={selectedTask}
-         isOpen={isDetailModalOpen} // Use isDetailModalOpen
-         onClose={handleCloseDetailModal} // Use handleCloseDetailModal
-       />
+      {/* Render the Task Detail Modal */}
+      <KanbanTaskDetailModal
+        task={selectedTask}
+        isOpen={isDetailModalOpen}
+        onClose={handleCloseDetailModal}
+      />
 
-       {/* Render the Pipeline Customization Modal */}
-       <PipelineCustomizationModal
-         isOpen={isCustomizationModalOpen}
-         onClose={handleCloseCustomizationModal}
-         onSave={handleSaveNewPipeline}
-       />
-     </div>
-   );
- }
+      {/* Render the Pipeline Customization Modal */}
+      <PipelineCustomizationModal
+        isOpen={isCustomizationModalOpen}
+        onClose={handleCloseCustomizationModal}
+        onSave={handleSaveNewPipeline}
+      />
+
+      {/* Add Task Modal - updated for dynamic fields */}
+      <Dialog open={addTaskModal.isOpen} onOpenChange={handleCloseAddTaskModal}>
+        <DialogContent className="bg-zinc-950 text-zinc-200 border border-zinc-800 rounded-md p-0 overflow-hidden shadow-xl">
+          <DialogHeader className="px-6 pt-6 pb-5 border-b border-zinc-900">
+            <DialogTitle className="text-xl font-semibold text-zinc-100">
+              Add New {currentItemName}
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400 mt-1">
+              Create a {currentItemName.toLowerCase()} in the "{addTaskModal.stageName}" stage
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col gap-5 p-6">
+            {currentFields.map((field) => (
+              <div key={field.name} className="space-y-2">
+                <label htmlFor={`field-${field.name}`} className="block text-sm font-medium text-zinc-300">
+                  {field.label} {field.required && <span className="text-red-400">*</span>}
+                </label>
+                
+                {field.type === 'textarea' && (
+                  <Textarea
+                    id={`field-${field.name}`}
+                    value={formValues[field.name] || ''}
+                    onChange={(e) => handleFormChange(field.name, e.target.value)}
+                    placeholder={`Enter ${field.label.toLowerCase()}...`}
+                    className="bg-zinc-800/80 border-zinc-700/50 text-zinc-200 placeholder:text-zinc-500 rounded-md min-h-[80px] p-3 focus-visible:ring-zinc-600 focus-visible:ring-offset-zinc-900"
+                  />
+                )}
+                
+                {field.type === 'text' && (
+                  <Input
+                    id={`field-${field.name}`}
+                    value={formValues[field.name] || ''}
+                    onChange={(e) => handleFormChange(field.name, e.target.value)}
+                    placeholder={`Enter ${field.label.toLowerCase()}...`}
+                    className="w-full bg-zinc-800/80 border-zinc-700/50 text-zinc-200 placeholder:text-zinc-500 rounded-md h-10 focus-visible:ring-zinc-600 focus-visible:ring-offset-zinc-900"
+                  />
+                )}
+                
+                {field.type === 'select' && field.options && (
+                  <Select 
+                    value={formValues[field.name] || ''} 
+                    onValueChange={(value) => handleFormChange(field.name, value)}
+                  >
+                    <SelectTrigger className="w-full bg-zinc-800/80 border-zinc-700/50 text-zinc-200 rounded-md focus:ring-zinc-600 focus-visible:ring-offset-zinc-900">
+                      <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-900 border-zinc-700 text-zinc-200 rounded-md">
+                      {field.options.map(option => (
+                        <SelectItem 
+                          key={option.value} 
+                          value={option.value} 
+                          className="focus:bg-zinc-800 focus:text-zinc-200"
+                        >
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                
+                {field.type === 'date' && (
+                  <Input
+                    id={`field-${field.name}`}
+                    type="date"
+                    value={formValues[field.name] || ''}
+                    onChange={(e) => handleFormChange(field.name, e.target.value)}
+                    className="w-full bg-zinc-800/80 border-zinc-700/50 text-zinc-200 placeholder:text-zinc-500 rounded-md h-10 focus-visible:ring-zinc-600 focus-visible:ring-offset-zinc-900"
+                  />
+                )}
+              </div>
+            ))}
+            
+            <div className="flex justify-end gap-3 pt-2 border-t border-zinc-800/80 mt-2">
+              <Button
+                onClick={handleCloseAddTaskModal}
+                variant="ghost"
+                className="text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-md"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveNewTask}
+                disabled={!formValues.content?.trim()}
+                className="bg-zinc-700 hover:bg-zinc-600 text-zinc-200 font-medium rounded-md"
+              >
+                Add {currentItemName}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

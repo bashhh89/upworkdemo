@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, createContext } from 'react';
+import React, { useState, createContext } from 'react';
 // Remove problematic imports
 // import { AssistantRuntimeProvider } from "@assistant-ui/react";
 // import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
@@ -9,7 +9,6 @@ import ToolResultsLibrary from '@/components/ToolResultsLibrary';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { SendIcon } from 'lucide-react';
-import Link from 'next/link';
 
 // Create a simple context to replace AssistantRuntimeProvider
 const AssistantRuntimeContext = createContext({});

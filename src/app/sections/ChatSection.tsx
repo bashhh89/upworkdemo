@@ -2,7 +2,51 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from "@/lib/utils";
-import { Send, Plus, RefreshCw, ChevronDown, ChevronUp, Copy, Check, Search, X, MessageSquare, Trash2, Clipboard, Play, Maximize, Minimize, Save, ExternalLink, Bookmark, BookmarkCheck, Users, Target, Globe, Mail, Info, Wrench, Building, Book, Sparkles, LayoutTemplate, ImagePlus } from 'lucide-react'; // Added ImagePlus icon
+import { 
+  MessageSquare, 
+  SendHorizonal, 
+  Send, 
+  Plus, 
+  ChevronDown, 
+  ChevronUp, 
+  Book,
+  Play,
+  Copy,
+  Check,
+  Save,
+  BookmarkCheck,
+  List,
+  Search,
+  Trash2,
+  Edit,
+  FileText,
+  Clock,
+  LogOut,
+  Home,
+  Command,
+  Brain,
+  Eye,
+  Music,
+  Target,
+  Sparkles,
+  Share,
+  Image,
+  X,
+  ImagePlus,
+  Mail,
+  Info,
+  Wrench,
+  Building,
+  Globe,
+  LayoutTemplate,
+  RefreshCw,
+  Clipboard,
+  Maximize,
+  Minimize,
+  ExternalLink,
+  Bookmark,
+  Users,
+} from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from "@/components/ui/button";
@@ -22,6 +66,8 @@ import { toast } from "@/components/ui/use-toast";
 import { useSearchParams } from 'next/navigation'; // Add this for URL parameter parameter handling
 import { detectToolRequest, extractParametersFromMessage, hasAllRequiredParameters, availableTools } from '@/lib/tool-utils';
 import { ToolDefinition } from '@/types/tools'; // Import type definition
+import { AgentConfiguration } from '@/types/agent';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator } from '@/components/ui/select';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -44,6 +90,11 @@ interface Model {
   id: string;
   name: string;
   description: string;
+  // Add properties based on the provided list
+  vision?: boolean;
+  audio?: boolean;
+  reasoning?: boolean;
+  uncensored?: boolean;
 }
 
 // Saved code artifact interface
@@ -68,13 +119,26 @@ interface ToolResult {
   shareUrl?: string; // URL for sharing
 }
 
+export const runtime = "edge";
+
+// Available models from Pollinations API
+const AVAILABLE_MODELS = [
+  "gemini", "openai", "openai-fast", "openai-large", "mirexa", "mistral", 
+  "llama", "unity", "deepseek", "sur", "phi", "searchgpt", "rtist"
+];
+
+// Helper function to check if a model is available
+function isModelAvailable(model: string): boolean {
+  return AVAILABLE_MODELS.includes(model.toLowerCase());
+}
+
 export default function ChatSection() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState(''); // Renamed input to inputValue for clarity
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("openai");
+  const [selectedModel, setSelectedModel] = useState("deepseek-reasoning"); // Set default to a model with good reasoning/thinking capabilities
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [isPromptStudioOpen, setIsPromptStudioOpen] = useState(false); // State for Prompt Studio modal
@@ -91,25 +155,29 @@ export default function ChatSection() {
   
   // Define initial Pollinations models with state
   const [pollinationsModels, setPollinationsModels] = useState<Model[]>([
-    { id: "openai-large", name: "OpenAI Large", description: "GPT-4o - More powerful OpenAI model with enhanced capabilities" },
-    { id: "gemini", name: "Gemini", description: "Google's advanced language model with strong reasoning capabilities" },
-    { id: "mistral", name: "Mistral", description: "Fast and efficient language model with good reasoning" },
-    { id: "qwen-coder", name: "Qwen Coder", description: "Specialized in code generation and programming tasks" },
-    { id: "llama", name: "Llama", description: "Meta's large language model with broad capabilities" },
-    { id: "llamascout", name: "Llama Scout", description: "Research-focused variant of Llama" },
-    { id: "unity", name: "Unity", description: "Specialized model with creative capabilities" },
-    { id: "midijourney", name: "Midi Journey", description: "Specialized in music and audio descriptions" },
-    { id: "rtist", name: "Rtist", description: "Artistic and creative text generation" },
-    { id: "searchgpt", name: "Search GPT", description: "Specialized in search and information retrieval" },
-    { id: "evil", name: "Evil", description: "Model with less content restrictions (use responsibly)" },
-    { id: "deepseek-reasoning", name: "DeepSeek Reasoning", description: "Enhanced reasoning capabilities for complex problems" },
-    { id: "deepseek-reasoning-large", name: "DeepSeek Reasoning Large", description: "Larger model with superior reasoning abilities" },
-    { id: "phi", name: "Phi", description: "Microsoft's compact but powerful language model" },
-    { id: "llama-vision", name: "Llama Vision", description: "Model with advanced knowledge representation" },
-    { id: "hormoz", name: "Hormoz", description: "Specialized conversational AI" },
-    { id: "hypnosis-tracy", name: "Hypnosis Tracy", description: "Specialized therapeutic conversation model" },
-    { id: "deepseek", name: "DeepSeek", description: "General purpose model with strong capabilities" },
-    { id: "sur", name: "Sur", description: "Specialized in summarization and content organization" }
+    { id: "openai", name: "OpenAI", description: "OpenAI GPT-4.1-mini (Azure)", vision: true },
+    { id: "openai-fast", name: "OpenAI Fast", description: "OpenAI GPT-4.1-nano (Azure)", vision: true },
+    { id: "openai-large", name: "OpenAI Large", description: "OpenAI GPT-4.1 (Azure)", vision: true },
+    { id: "qwen-coder", name: "Qwen Coder", description: "Qwen 2.5 Coder 32B (Scaleway)" },
+    { id: "llama", name: "Llama", description: "Llama 3.3 70B (Cloudflare)" },
+    { id: "llamascout", name: "Llama Scout", description: "Llama 4 Scout 17B (Cloudflare)" },
+    { id: "mistral", name: "Mistral", description: "Mistral Small 3.1 24B (Cloudflare)", vision: true },
+    { id: "unity", name: "Unity", description: "Unity Unrestricted Agent (Mistral Small 3.1, Scaleway)", uncensored: true, vision: true },
+    { id: "mirexa", name: "Mirexa", description: "WithThatWay's Mirexa", vision: true },
+    { id: "midijourney", name: "Midi Journey", description: "Midijourney (Azure)" },
+    { id: "rtist", name: "Rtist", description: "Rtist (Azure)" },
+    { id: "searchgpt", name: "Search GPT", description: "SearchGPT (Azure)", vision: true },
+    { id: "openai-reasoning", name: "OpenAI Reasoning", description: "OpenAI model variant focused on reasoning tasks", reasoning: true }, // Placeholder description
+    { id: "evil", name: "Evil", description: "Evil (Scaleway)", uncensored: true, vision: true },
+    { id: "deepseek-reasoning", name: "DeepSeek Reasoning", description: "MAI-DS-R1 (Cloudflare)", reasoning: true },
+    { id: "deepseek-reasoning-large", name: "DeepSeek Reasoning Large", description: "Larger DeepSeek model with superior reasoning abilities", reasoning: true }, // Placeholder description
+    { id: "phi", name: "Phi", description: "Phi-4 Instruct (Cloudflare)", vision: true, audio: true },
+    { id: "llama-vision", name: "Llama Vision", description: "Llama 3.2 11B Vision (Cloudflare)", vision: true },
+    { id: "hormoz", name: "Hormoz", description: "Hormoz 8b (Modal)" },
+    { id: "hypnosis-tracy", name: "Hypnosis Tracy", description: "Hypnosis Tracy 7B (Azure)", audio: true },
+    { id: "deepseek", name: "DeepSeek", description: "DeepSeek-V3 (DeepSeek)" },
+    { id: "sur", name: "Sur", description: "Sur AI Assistant (Mistral, Scaleway)", vision: true },
+    { id: "openai-audio", name: "OpenAI Audio", description: "OpenAI GPT-4o-audio-preview (Azure)", vision: true, audio: true }
   ]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
@@ -764,11 +832,13 @@ export default function ChatSection() {
 
   // Function to toggle thinking section expansion
   const toggleThinking = (messageId: string) => {
-    setExpandedThinking(prev =>
-      prev.includes(messageId)
-        ? prev.filter(id => id !== messageId)
-        : [...prev, messageId]
-    );
+    console.log('Toggle thinking for message:', messageId);
+    const newExpandedThinking = expandedThinking.includes(messageId)
+      ? expandedThinking.filter(id => id !== messageId)
+      : [...expandedThinking, messageId];
+    
+    console.log('New expanded thinking state:', newExpandedThinking);
+    setExpandedThinking(newExpandedThinking);
   };
 
   // Helper function to extract thinking content
@@ -778,7 +848,7 @@ export default function ChatSection() {
   // This means the thinking extraction only works reliably with deepseek-reasoning model
   const extractThinking = (content: string): { thinking: string, response: string } => {
     // Check if content has explicit thinking section with tags
-    if (content.includes('<think>') && content.includes('</think>')) {
+    if (content && content.includes('<think>') && content.includes('</think>')) {
       const thinkingMatch = content.match(/<think>([\s\S]*?)<\/think>/);
       const thinking = thinkingMatch ? thinkingMatch[1].trim() : '';
       const response = content.replace(/<think>[\s\S]*?<\/think>/, '').trim();
@@ -798,6 +868,7 @@ export default function ChatSection() {
 
     // Try to find reasoning section using the patterns
     for (const pattern of reasoningPatterns) {
+      if (!content) continue;
       const match = content.match(pattern);
       if (match && match[1] && match[1].length > 50) { // Ensure the match is substantial
         const reasoning = match[1].trim();
@@ -814,7 +885,7 @@ export default function ChatSection() {
     }
 
     // If no pattern matches, check if response is long and might contain reasoning
-    if (content.length > 300) {
+    if (content && content.length > 300) {
       const lines = content.split('\n');
       const responseThird = Math.floor(lines.length / 3);
 
@@ -833,7 +904,7 @@ export default function ChatSection() {
     }
 
     // Default case: no thinking section detected
-    return { thinking: '', response: content };
+    return { thinking: '', response: content || '' };
   };
 
   // Detect language from code block
@@ -1216,7 +1287,7 @@ export default function ChatSection() {
     }
   };
 
-  // Modify handleSend to use tools when appropriate
+  // Modify handleSend function to handle API errors better
   const handleSend = async () => {
     if (!inputValue.trim() && !imageAttachment) return;
 
@@ -1282,85 +1353,111 @@ export default function ChatSection() {
         endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
 
-      // Check if this is likely a code generation request
-      const isCodeRequest = /code|create|generate|script|html|css|javascript|function|programming/i.test(inputValue.toLowerCase());
+      let assistantResponse = '';
+      let modelUsed = selectedModel;
+      let apiError = null;
+      
+      // Initialize model attempts variables
+      let modelAttempts = 0;
+      const maxModelAttempts = 2;
+      let currentModelToTry = selectedModel;
 
-      // Check if it's a complex code request (landing pages, complete websites, etc.)
-      const isComplexCodeRequest = isCodeRequest &&
-                                  /landing page|website|app|application|complete|full/i.test(inputValue.toLowerCase());
+      // Try up to maxModelAttempts times with different models
+      while (modelAttempts < maxModelAttempts) {
+        try {
+          modelAttempts++;
+          console.log(`Attempt ${modelAttempts} with model: ${currentModelToTry}`);
 
-      // Add a timeout for the fetch request
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout for complex code generation
-
-      // Modify messagesForAPI to send image data in the correct format
-      const messagesForAPI = updatedMessages.map(msg => {
-        // Check if the message has a valid image string
-        if (msg.image && typeof msg.image === 'string' && msg.image.startsWith('data:image')) {
-          // Convert to OpenAI Vision format
-          return {
-            role: msg.role,
-            content: [
-              { 
-                type: "text", 
-                // Provide default text if content is empty, otherwise use original content
-                text: msg.content || "Describe this image:" 
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: msg.image // Send the base64 data URL
-                }
-              }
-            ]
-          };
-        } else {
-          // For messages without images, keep original format (role and content string)
-          // Ensure we only send role and content, excluding other potential fields like id, thinking, etc.
-          return { 
-            role: msg.role, 
-            content: msg.content 
-          };
+        // Standard Model: Use existing chat API logic
+        // Modify messagesForAPI to send image data in the correct format and add thinking instructions for reasoning models
+        const messagesForAPI = updatedMessages.map(msg => {
+          if (msg.image && typeof msg.image === 'string' && msg.image.startsWith('data:image')) {
+            return {
+              role: msg.role,
+              content: [
+                { type: "text", text: msg.content || "Describe this image:" },
+                { type: "image_url", image_url: { url: msg.image } }
+              ]
+            };
+          } else {
+            return { role: msg.role, content: msg.content };
+          }
+        });
+        
+        // Add special system message for thinking models if needed
+        const isReasoningModel = selectedModel.includes('reasoning') || selectedModel === 'deepseek' || selectedModel === 'deepseek-reasoning';
+        
+        if (isReasoningModel) {
+          // Add system message to encourage thinking output
+          messagesForAPI.unshift({
+            role: 'system',
+            content: 'Show your thinking process by using <think>your reasoning here</think> tags before giving your final answer. I want to see your step-by-step reasoning.'
+          });
         }
-      });
+        
+        // Add a timeout for the fetch request
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-      console.log("Sending API request with processed messages (image format check):", messagesForAPI.length, messagesForAPI.find(m => Array.isArray(m.content)));
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              messages: messagesForAPI, 
+              model: currentModelToTry 
+            }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          // Send messages without image data to prevent 500 error
-          messages: messagesForAPI,
-          model: selectedModel
-        }),
-        signal: controller.signal
-      });
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`API response error (${response.status}):`, errorText);
+            
+            // If this was the first attempt with a non-standard model, try again with a reliable model
+            if (modelAttempts === 1 && currentModelToTry !== "openai") {
+              // Switch to openai model for the second attempt
+              currentModelToTry = "openai";
+              apiError = `The model "${selectedModel}" returned an error. Trying with the OpenAI model instead...`;
+              continue; // Try again with the new model
+            }
+            
+          throw new Error(`Error from API: ${response.status} - ${errorText}`);
+        }
 
-      clearTimeout(timeoutId); // Clear the timeout if the request completes
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`API response error (${response.status}):`, errorText);
-        throw new Error(`Error from API: ${response.status} - ${errorText}`);
+        const data = await response.json();
+        modelUsed = data.model || selectedModel;
+        assistantResponse = data.choices[0].message.content;
+          apiError = null; // Clear error if successful
+          break; // Exit the loop on success
+        } catch (error) {
+          // If this was the last attempt, rethrow the error
+          if (modelAttempts >= maxModelAttempts) {
+            throw error;
+          }
+          // Otherwise, continue to next attempt
+          apiError = error.message;
+        }
       }
 
-      const data = await response.json();
-
-      // Use the model info returned from the API if available
-      const modelUsed = data.model || selectedModel;
-
       // Extract thinking and response content
-      const content = data.choices[0].message.content;
-      const { thinking, response: cleanedResponse } = extractThinking(content);
+      const { thinking, response: cleanedResponse } = extractThinking(assistantResponse || '');
+
+      // More detailed logging for debugging
+      console.log('Extracted thinking content:', {
+        hasThinking: !!thinking, 
+        thinkingLength: thinking ? thinking.length : 0,
+        responseLength: cleanedResponse ? cleanedResponse.length : 0,
+        modelUsed
+      });
 
       const assistantMessage: Message = {
         id: uuidv4(),
         role: 'assistant' as const,
-        content: cleanedResponse,
-        thinking: thinking,
+        content: apiError ? 
+          `I encountered an issue with the ${selectedModel} model: ${apiError}\n\n${cleanedResponse}` :
+          cleanedResponse,
+        thinking: thinking || '',  // Ensure thinking is stored
         model: modelUsed
       };
 
@@ -1368,8 +1465,8 @@ export default function ChatSection() {
       setMessages(finalMessages);
 
       // Always auto-preview responses, with priority for code generation requests
+      const isCodeRequest = /code|create|generate|script|html|css|javascript|function|programming/i.test(inputValue.toLowerCase());
       const forcePreview = isCodeRequest || /code|html|css|javascript/i.test(assistantMessage.content);
-      // Always run auto-preview since it's always enabled now
       autoPreviewCode(assistantMessage);
 
       // Update thread with assistant response
@@ -1398,11 +1495,12 @@ export default function ChatSection() {
           '2. Specify the framework you prefer\n' +
           '3. Try again with more specific details about what you want';
       } else if (error.message?.includes('500')) {
-        errorContent += 'The server encountered an internal error. This often happens with complex generation requests. Try the following:\n\n' +
-          '1. Break your request into smaller, simpler parts\n' +
-          '2. Be more specific about what you want';
+        errorContent += 'The server encountered an internal error. This might be due to:\n\n' +
+          '1. The API endpoint is not correctly set up - ask the developer to check /api/chat\n' +
+          '2. The selected model may be unavailable - try a different model like "openai"\n' +
+          '3. The request may be too complex - try simplifying it';
       } else {
-        errorContent += 'The model you selected might be temporarily unavailable. Please try again with a different model.';
+        errorContent += `The model you selected "${selectedModel}" might be temporarily unavailable. Please try again with a different model like "gemini" or "openai".`;
       }
 
       const errorMessage: Message = {
@@ -1424,11 +1522,22 @@ export default function ChatSection() {
       // Focus back on the textarea
       setTimeout(() => inputRef.current?.focus(), 50);
     }
+    
+    // Clear and reset textarea height after sending
+    setInputValue('');
+    if (inputRef.current) {
+      inputRef.current.style.height = '52px';
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
-    // Removed manual auto-resize logic
+    
+    // Auto-resize the textarea based on content
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = `${Math.min(200, Math.max(52, inputRef.current.scrollHeight))}px`;
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -1551,6 +1660,21 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
     }
   };
 
+  // Add state to track expanded code blocks
+  const [expandedCodeBlocks, setExpandedCodeBlocks] = useState<string[]>([]);
+
+  // Function to toggle code block expansion
+  const toggleCodeBlock = (codeId: string) => {
+    setExpandedCodeBlocks(prev => 
+      prev.includes(codeId) 
+        ? prev.filter(id => id !== codeId)
+        : [...prev, codeId]
+    );
+  };
+
+  // Function to check if a code block is expanded
+  const isExpanded = (codeId: string) => expandedCodeBlocks.includes(codeId);
+
   // Custom renderer for code blocks and tables
   const renderers = {
     // Root wrapper with proper styling
@@ -1596,7 +1720,6 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
       const language = match ? match[1] : 'text';
       const codeContent = String(children).replace(/\n$/, '');
       const codeId = useRef(`code-${Math.random().toString(36).substring(2, 9)}`).current;
-      const isExpanded = expandedCodeBlocks.includes(codeId);
       
       // For inline code, just return as is
       if (inline) {
@@ -1657,9 +1780,9 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
               <button
                 onClick={() => toggleCodeBlock(codeId)}
                 className="bg-[#222] hover:bg-[#333] p-1 rounded text-xs flex items-center"
-                aria-label={isExpanded ? "Collapse code" : "Expand code"}
+                aria-label={isExpanded(codeId) ? "Collapse code" : "Expand code"}
               >
-                {isExpanded ? (
+                {isExpanded(codeId) ? (
                   <><ChevronUp className="h-3 w-3 mr-1" /> Collapse</>
                 ) : (
                   <><ChevronDown className="h-3 w-3 mr-1" /> Expand</>
@@ -1669,7 +1792,7 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
           </div>
           
           {/* Code content - conditionally shown based on expanded state */}
-          <div className={`transition-all duration-200 ease-in-out ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+          <div className={`transition-all duration-200 ease-in-out ${isExpanded(codeId) ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
             <pre className="p-4 overflow-x-auto">
               <code className={className} {...props}>
                 {children}
@@ -2021,719 +2144,6 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
   </div>
 </body>
 </html>`;
-      }
-    };
-
-    const previewContent = getPreviewContent();
-
-    // Copy the code to clipboard
-    const copyCode = () => {
-      navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    };
-
-    // Toggle the save form
-    const toggleSave = () => {
-      if (isSaved) {
-        // If already saved, we could offer to edit or delete
-        deleteArtifact(id!);
-         // After deleting, also close the save form if it was open
-         if(isSaving) {
-           toggleSaving();
-         }
-      } else {
-        toggleSaving(); // Use the passed-in toggle function
-      }
-    };
-
-    // Clean close function for the preview
-    const closePreview = () => {
-      setCodePreview(null);
-      if(isSaving) {
-        setIsSaving(false);
-      }
-    };
-
-    return (
-      <div
-        className={cn(
-          "fixed right-0 top-0 bottom-0 bg-black/90 z-50 flex flex-col transition-all duration-300 ease-in-out",
-          isFullscreen ? "left-0" : "w-[60%] border-l border-[#333]",
-          "transform"
-        )}
-        style={{
-          boxShadow: "-5px 0 25px rgba(0,0,0,0.5)"
-        }}
-      >
-        <div className="flex items-center justify-between p-4 border-b border-[#333333]">
-          <div className="flex items-center">
-            <div className="text-white font-medium">
-              Code Preview: <span className="text-blue-400">{language}</span>
-            </div>
-            {id && (
-              <div className="ml-3 px-2 py-1 bg-[#222] rounded-full text-xs text-gray-300">
-                ID: {id.slice(0, 8)}
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className={cn(
-                "h-8 px-3 flex items-center gap-1",
-                isSaved && "bg-blue-600/20 border-blue-500"
-              )}
-              onClick={toggleSave}
-            >
-              {isSaved ? (
-                <>
-                  <BookmarkCheck className="h-3.5 w-3.5" />
-                  <span>Saved</span>
-                </>
-              ) : (
-                <>
-                  <Save className="h-3.5 w-3.5" />
-                  <span>Save</span>
-                </>
-              )}
-            </Button>
-
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 px-3 flex items-center gap-1"
-              onClick={copyCode}
-            >
-              {copied ? (
-                <>
-                  <Check className="h-3.5 w-3.5" />
-                  <span>Copied</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3.5 w-3.5" />
-                  <span>Copy</span>
-                </>
-              )}
-            </Button>
-
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 px-3 flex items-center gap-1"
-              onClick={() => setIsFullscreen(!isFullscreen)}
-            >
-              {isFullscreen ? (
-                <>
-                  <Minimize className="h-3.5 w-3.5" />
-                  <span>Minimize</span>
-                </>
-              ) : (
-                <>
-                  <Maximize className="h-3.5 w-3.5" />
-                  <span>Fullscreen</span>
-                </>
-              )}
-            </Button>
-
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 px-3"
-              onClick={closePreview}
-            >
-              Close
-            </Button>
-          </div>
-        </div>
-
-        {/* Render the dedicated ArtifactSaveForm component */}
-        <ArtifactSaveForm
-          isSaving={isSaving}
-          setIsSaving={setIsSaving}
-          artifactTitle={artifactTitle}
-          setArtifactTitle={setArtifactTitle}
-          artifactDescription={artifactDescription}
-          setArtifactDescription={setArtifactDescription}
-          saveArtifact={saveArtifact}
-          toggleSaving={toggleSavingArtifact}
-          language={language}
-        />
-
-        <div className="flex-1 bg-white overflow-hidden">
-          <iframe
-            srcDoc={previewContent}
-            className="w-full h-full border-none"
-            sandbox="allow-scripts"
-            title="Code Preview"
-          />
-        </div>
-      </div>
-    );
-  };
-
-  // Function to completely reset library state and close properly
-  const closeLibrary = () => {
-    setShowLibrary(false);
-    setLibraryDropdownOpen(false);
-  };
-
-  // Code Library component with fixed closing functionality
-  const CodeLibrary = () => {
-    const [searchTerm, setSearchTerm] = useState('');
-
-    // Filter artifacts based on search term
-    const filteredArtifacts = searchTerm.trim() === ''
-      ? savedArtifacts
-      : savedArtifacts.filter(artifact =>
-          artifact.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          artifact.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          artifact.language.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-black/90 transition-all duration-300 ease-in-out">
-        <div className="flex items-center justify-between p-4 border-b border-[#333333]">
-          <div className="text-white font-medium">
-            Code Library: <span className="text-blue-400">{savedArtifacts.length} saved snippets</span>
-          </div>
-
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 px-3"
-            onClick={closeLibrary}
-          >
-            Close
-          </Button>
-        </div>
-
-        <div className="p-4 border-b border-[#333]">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search saved code..."
-              className="w-full px-3 py-2 pl-10 pr-10 bg-[#0a0a0a] border border-[#333] rounded text-white focus:outline-none"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4">
-          {filteredArtifacts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400">
-              {searchTerm ? (
-                <>
-                  <Search className="h-10 w-10 mb-3 opacity-50" />
-                  <p>No saved code found matching "{searchTerm}"</p>
-                </>
-              ) : (
-                <>
-                  <Bookmark className="h-10 w-10 mb-3 opacity-50" />
-                  <p>No saved code snippets yet</p>
-                  <p className="text-sm mt-2">When you save code, it will appear here</p>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredArtifacts.map(artifact => (
-                <div
-                  key={artifact.id}
-                  className="bg-[#111] border border-[#333] rounded-md overflow-hidden hover:border-blue-500 transition-colors"
-                >
-                  <div className="p-4">
-                    <div className="flex justify-between items-start">
-                      <h3 className="text-white font-medium truncate mr-2">{artifact.title}</h3>
-                      <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded-full">
-                        {artifact.language}
-                      </span>
-                    </div>
-                    <p className="text-gray-400 text-sm mt-1 line-clamp-2">{artifact.description}</p>
-                    <div className="text-xs text-gray-500 mt-2">
-                      {new Date(artifact.createdAt).toLocaleDateString()} · {artifact.code.length} chars
-                    </div>
-                  </div>
-
-                  <div className="border-t border-[#222] p-3 flex justify-between">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 text-gray-400 hover:text-white"
-                      onClick={() => loadArtifact(artifact)}
-                    >
-                      <Play className="h-3.5 w-3.5 mr-1" /> Preview
-                    </Button>
-
-                    <div className="flex gap-1">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 px-2 text-gray-400 hover:text-white"
-                              onClick={() => {
-                                if (artifact.preview) {
-                                  copyShareLink(artifact.preview);
-                                }
-                              }}
-                            >
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Copy share link</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 px-2 text-gray-400 hover:text-white"
-                              onClick={() => navigator.clipboard.writeText(artifact.code)}
-                            >
-                              <Copy className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Copy code</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 px-2 text-red-400 hover:text-red-300"
-                              onClick={() => deleteArtifact(artifact.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Delete</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // Function to fully close tool results library
-  const closeToolResultsLibrary = () => {
-    setShowToolResultsLibrary(false);
-    setToolResultsDropdownOpen(false);
-  };
-
-  // Tool Results Library component
-  const ToolResultsLibrary = () => {
-    const [searchTerm, setSearchTerm] = useState('');
-
-    // Filter results based on search term
-    const filteredResults = searchTerm.trim() === ''
-      ? savedToolResults
-      : savedToolResults.filter(result =>
-          result.toolName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          result.summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (result.url && result.url.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
-
-    // Function to format date
-    const formatDate = (date: Date) => {
-      return new Date(date).toLocaleString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    };
-
-    // Function to delete a tool result
-    const deleteToolResult = (id: string) => {
-      setSavedToolResults(prev => prev.filter(result => result.id !== id));
-
-      // Update localStorage
-      const updatedResults = savedToolResults.filter(result => result.id !== id);
-      localStorage.setItem('toolResults', JSON.stringify(updatedResults));
-
-      // Show notification
-      showNotification("Result deleted", "The tool result has been removed from your library.");
-    };
-
-    // Function to copy share link
-    const copyResultLink = (url: string) => {
-      const fullUrl = window.location.origin + url;
-      navigator.clipboard.writeText(fullUrl);
-      copyShareLink(fullUrl);
-    };
-
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-black/90 transition-all duration-300 ease-in-out">
-        <div className="flex items-center justify-between p-4 border-b border-[#333333]">
-          <div className="text-white font-medium">
-            Tool Results Library: <span className="text-blue-400">{savedToolResults.length} saved results</span>
-          </div>
-
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 px-3"
-            onClick={closeToolResultsLibrary}
-          >
-            Close
-          </Button>
-        </div>
-
-        <div className="p-4 border-b border-[#333]">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search saved results..."
-              className="w-full px-3 py-2 pl-10 pr-10 bg-[#0a0a0a] border border-[#333] rounded text-white focus:outline-none"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4">
-          {filteredResults.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400">
-              {searchTerm ? (
-                <>
-                  <Search className="h-10 w-10 mb-3 opacity-50" />
-                  <p>No saved results found matching "{searchTerm}"</p>
-                </>
-              ) : (
-                <>
-                  <Globe className="h-10 w-10 mb-3 opacity-50" />
-                  <p>No saved tool results yet</p>
-                  <p className="text-sm mt-2">Use AI Chat with specialized commands to generate results</p>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredResults.map(result => (
-                <div
-                  key={result.id}
-                  className="bg-[#111] border border-[#333] rounded-md overflow-hidden hover:border-blue-500 transition-colors"
-                >
-                  <div className="p-4">
-                    <div className="flex justify-between items-start">
-                      <h3 className="text-white font-medium truncate mr-2">{result.toolName}</h3>
-                      <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded-full">
-                        {formatDate(result.createdAt)}
-                      </span>
-                    </div>
-
-                    {result.url && (
-                      <div className="text-gray-400 text-sm mt-1 truncate">
-                        {result.url}
-                      </div>
-                    )}
-
-                    <p className="text-gray-400 text-sm mt-2 line-clamp-3">{result.summary}</p>
-                  </div>
-
-                  <div className="border-t border-[#222] p-3 flex justify-between">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 text-gray-400 hover:text-white"
-                      onClick={() => {
-                        // Launch the appropriate viewer based on tool type
-                        window.open(result.shareUrl, '_blank');
-                      }}
-                    >
-                      <ExternalLink className="h-3.5 w-3.5 mr-1" /> View
-                    </Button>
-
-                    <div className="flex gap-1">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 px-2 text-gray-400 hover:text-white"
-                              onClick={() => {
-                                if (result.shareUrl) {
-                                  copyResultLink(result.shareUrl);
-                                }
-                              }}
-                            >
-                              <Copy className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Copy share link</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 px-2 text-gray-400 hover:text-white"
-                              onClick={() => {
-                                // Add this result to the current chat
-                                const assistantMessage: Message = {
-                                  id: uuidv4(),
-                                  role: 'assistant' as const,
-                                  content: `Here's the ${result.toolName} analysis I ran earlier:\n\n**Summary:** ${result.summary}\n\n[View Full Analysis](${result.shareUrl})\n\nWould you like me to explain any specific aspects of this analysis?`,
-                                  toolResult: result // Add the tool result to the message for reference
-                                };
-
-                                setMessages(prev => [...prev, assistantMessage]);
-                                setShowToolResultsLibrary(false);
-                              }}
-                            >
-                              <MessageSquare className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Add to current chat</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 px-2 text-red-400 hover:text-red-300"
-                              onClick={() => deleteToolResult(result.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Delete</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // New states for tool parameter handling
-  const [pendingToolRequest, setPendingToolRequest] = useState<{
-    tool: ToolDefinition | null,
-    params: Record<string, string>,
-    originalMessage: string
-  } | null>(null);
-
-  // Get search params for URL parameter handling
-  const searchParams = useSearchParams();
-
-  // ... existing useEffects ...
-
-  // Handle URL parameters for direct tool launching
-  useEffect(() => {
-    // Check for tool parameter
-    const toolParam = searchParams?.get('tool');
-    const promptParam = searchParams?.get('prompt');
-
-    if (toolParam) {
-      let targetTool: ToolDefinition | undefined;
-
-      // Find the tool based on partial name match
-      if (toolParam.toLowerCase().includes('web') || toolParam.toLowerCase().includes('scan')) {
-        targetTool = availableTools.find(t => t.name.includes('Website'));
-      } else if (toolParam.toLowerCase().includes('exec') || toolParam.toLowerCase().includes('persona')) {
-        targetTool = availableTools.find(t => t.name.includes('Executive'));
-      } else if (toolParam.toLowerCase().includes('deal') || toolParam.toLowerCase().includes('contextual')) {
-        targetTool = availableTools.find(t => t.name.includes('Deal'));
-      }
-
-      if (targetTool) {
-        console.log('Launching tool from URL param:', targetTool.name);
-
-        // Set up pending tool request
-        setPendingToolRequest({
-          tool: targetTool,
-          params: {},
-          originalMessage: `Launch ${targetTool.name}`
-        });
-      }
-    } else if (promptParam) {
-      // Set input field with the prompt parameter
-      setInputValue(promptParam);
-    }
-  }, [searchParams]);
-
-  // ... existing functions ...
-
-  // ... rest of the existing component ...
-
-  // This replaces the dropdown-based models menu with a simple button
-  const openModelSelector = () => {
-    // Close other dropdowns first
-    setThreadsDropdownOpen(false);
-    setLibraryDropdownOpen(false);
-    setToolResultsDropdownOpen(false);
-    
-    // Clear and reset the model search
-    setModelSearch('');
-    
-    // Show the model selector as its own fullscreen overlay
-    setShowModelSelector(true);
-  };
-  
-  // Close model selector
-  const closeModelSelector = () => {
-    setShowModelSelector(false);
-  };
-  
-  // State for model selector
-  const [showModelSelector, setShowModelSelector] = useState(false);
-  
-  // Simple Model Selector component
-  const ModelSelector = () => {
-    return (
-      <div className="fixed inset-0 z-[100] flex flex-col bg-black/95 transition-all duration-300 ease-in-out">
-        <div className="flex items-center justify-between p-4 border-b border-[#333333]">
-          <div className="text-white font-medium">
-            Select AI Model
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 px-3"
-            onClick={closeModelSelector}
-          >
-            Close
-          </Button>
-        </div>
-        
-        <div className="p-4 border-b border-[#333]">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              type="text"
-              value={modelSearch}
-              onChange={(e) => setModelSearch(e.target.value)}
-              placeholder="Search models..."
-              className="w-full px-3 py-2 pl-10 pr-10 bg-[#0a0a0a] border border-[#333] rounded text-white focus:outline-none"
-            />
-            {modelSearch && (
-              <button
-                onClick={() => setModelSearch('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {filteredModels.map(model => (
-              <Button
-                key={model.id}
-                variant={selectedModel === model.id ? "default" : "outline"}
-                className={`justify-start py-6 text-left ${selectedModel === model.id ? 'bg-blue-600 hover:bg-blue-700' : 'bg-[#111] hover:bg-[#222]'}`}
-                onClick={() => {
-                  setSelectedModel(model.id);
-                  closeModelSelector();
-                }}
-              >
-                <div className="flex flex-col">
-                  <span className="font-medium">{model.name}</span>
-                  <span className="text-xs text-gray-400 mt-1">{model.description}</span>
-                </div>
-              </Button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Add state to track expanded code blocks
-  const [expandedCodeBlocks, setExpandedCodeBlocks] = useState<string[]>([]);
-
-  // Function to toggle code block expansion
-  const toggleCodeBlock = (codeId: string) => {
-    setExpandedCodeBlocks(prev => 
-      prev.includes(codeId) 
-        ? prev.filter(id => id !== codeId)
-        : [...prev, codeId]
-    );
-  };
-
-  // Helper function to process small image files
-  const processImageFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (typeof event.target?.result === 'string') {
-        const imageData = event.target.result;
-        console.log("Image loaded successfully, data length:", imageData.length);
-        setImageAttachment(imageData);
-        showNotification("Image attached", "Image ready to send with your message.");
-      } else {
-        console.log("Failed to read image as string");
-      }
-      setIsProcessingImage(false); // Processing finished
-    };
-    reader.onerror = (error) => {
-      console.error("Error reading file:", error);
-      showNotification("Error", "Failed to process image file.");
-      setIsProcessingImage(false); // Processing finished on error
-    };
-    reader.readAsDataURL(file);
-  };
 
   // Handle file input change for image upload
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2936,394 +2346,248 @@ ReactDOM.render(<App />, document.getElementById('root'));`,
     setImageAttachment(null);
   };
 
+  const [agents, setAgents] = useState<AgentConfiguration[]>([]);
+
+  // Fetch agents on mount
+  useEffect(() => {
+    const fetchAgents = async () => {
+      try {
+        const response = await fetch('/api/agent-studio');
+        if (!response.ok) throw new Error('Failed to fetch agents');
+        const data = await response.json();
+        setAgents(data);
+      } catch (err) {
+        console.error('Error fetching agents:', err);
+      }
+    };
+    fetchAgents();
+  }, []);
+
+  // Replace the enhancePrompt function with a more robust implementation
+  const enhancePrompt = async (prompt: string): Promise<string> => {
+    if (!prompt.trim()) return prompt;
+    
+    // Create a temporary loading state that doesn't affect the UI button
+    const tempLoading = true;
+    
+    try {
+      // Call the same chat API endpoint but with specific enhancer instructions
+      const enhancerMessages = [
+        {
+          role: 'system',
+          content: `You are the world's best prompt engineer. 
+Your task is to dramatically improve the user's prompt to get better AI responses.
+
+RULES:
+1. Make the prompt extremely detailed, specific and clear
+2. Add creative elements the user didn't think of that improve the request
+3. Break down complex requests into clear steps or bullet points
+4. For coding: add specific requirements for error handling, documentation, and edge cases
+5. For creative: add sensory details, emotional elements, and vivid imagery
+6. For business: include metrics, outcomes, and strategic considerations
+7. NEVER add phrases like "please provide" or similar phrases. DO NOT include explanations - return ONLY the enhanced prompt text with no additional commentary. Keep your enhancement concise and effective.
+8. DO NOT include explanations or commentary in any form
+9. DO NOT introduce your response with phrases like "Here's an enhanced prompt"
+10. DO NOT enclose the prompt in quotes
+11. Return ONLY the improved prompt text with no explanations`
+        },
+        {
+          role: 'user',
+          content: `Transform this basic prompt into a dramatically improved, detailed and specific version: "${prompt}"`
+        }
+      ];
+      
+      // Call the chat API 
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          messages: enhancerMessages, 
+          model: selectedModel,
+          temperature: 0.7 // Use moderate temperature for creativity
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error enhancing prompt: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      // Extract the enhanced prompt from the response
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error("Unexpected API response format");
+      }
+      
+      const enhancedPrompt = data.choices[0].message.content;
+      
+      // Extensive cleaning to handle different AI model response formats
+      let cleanedPrompt = enhancedPrompt
+        .replace(/^[\s"']*Enhanced prompt:[\s"']*/i, '')
+        .replace(/^[\s"']*Here['s]* (?:is )?(?:the |your |an )?enhanced prompt:[\s"']*/i, '')
+        .replace(/^[\s"']*(?:Enhanced|Improved|Better) version:[\s"']*/i, '')
+        .replace(/^[\s"']*(?:Here is|Here's)(?: the| your| an)? (?:enhanced|improved|better)(?:[ -]|\s+)(?:version|prompt)(?:\s+of your prompt)?:[\s"']*/i, '')
+        .replace(/["']$/, '') // Remove trailing quote
+        .replace(/^["']/, '') // Remove leading quote
+        .trim();
+      
+      // If the model didn't return anything useful, return the original
+      if (!cleanedPrompt || cleanedPrompt === prompt || cleanedPrompt.length < 5) {
+        return prompt;
+      }
+      
+      return cleanedPrompt;
+    } catch (error) {
+      console.error("Error enhancing prompt:", error);
+      // Return original prompt if enhancement failed
+      return prompt;
+    }
+  };
+
+  // State for model selector
+  const [showModelSelector, setShowModelSelector] = useState(false);
+  
+  
+  // Simple Model Selector component
+  const ModelSelector = () => {
+    const reasoningModels = pollinationsModels.filter(model => model.reasoning);
+    const visionModels = pollinationsModels.filter(model => model.vision && !model.reasoning);
+    const standardModels = pollinationsModels.filter(model => !model.vision && !model.reasoning && !model.uncensored && !model.audio);
+    const audioModels = pollinationsModels.filter(model => model.audio);
+    const uncensoredModels = pollinationsModels.filter(model => model.uncensored);
+    
+    const filteredModels = modelSearch.trim()
+      ? pollinationsModels.filter(model => 
+          model.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
+          model.id.toLowerCase().includes(modelSearch.toLowerCase()) ||
+          model.description.toLowerCase().includes(modelSearch.toLowerCase())
+        )
+      : [];
+    
+    // Add the missing renderModelButton function
+    const renderModelButton = (model: Model) => {
+      return (
+        <button
+          key={model.id}
+          className={`w-full text-left px-3 py-2 rounded-md my-1 transition-colors ${
+            selectedModel === model.id
+              ? "bg-indigo-600/30 text-white"
+              : "text-zinc-300 hover:bg-zinc-800"
+          }`}
+          onClick={() => {
+            setSelectedModel(model.id);
+            setShowModelSelector(false);
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-medium">{model.name}</div>
+              <div className="text-xs text-zinc-400 mt-0.5 max-w-xs truncate">
+                {model.description}
+              </div>
+            </div>
+            <div className="flex gap-1">
+              {model.vision && (
+                <span className="bg-green-500/20 text-green-400 text-[10px] px-1.5 py-0.5 rounded-full">Vision</span>
+              )}
+              {model.reasoning && (
+                <span className="bg-yellow-500/20 text-yellow-400 text-[10px] px-1.5 py-0.5 rounded-full">Reasoning</span>
+              )}
+              {model.audio && (
+                <span className="bg-purple-500/20 text-purple-400 text-[10px] px-1.5 py-0.5 rounded-full">Audio</span>
+              )}
+              {model.uncensored && (
+                <span className="bg-red-500/20 text-red-400 text-[10px] px-1.5 py-0.5 rounded-full">Uncensored</span>
+              )}
+            </div>
+          </div>
+        </button>
+      );
+    };
+    
+    // Add the missing renderModelGroup function
+    const renderModelGroup = (title: string, models: Model[], icon: React.ReactNode) => {
+      if (models.length === 0) return null;
+      
+      return (
+        <div className="mb-4">
+          <div className="flex items-center gap-1.5 mb-2 px-3">
+            {icon}
+            <h3 className="font-medium text-sm text-zinc-400">{title}</h3>
+            <span className="text-[10px] text-zinc-500 mt-0.5">({models.length})</span>
+          </div>
+          <div className="space-y-1">
+            {models.map(model => renderModelButton(model))}
+          </div>
+        </div>
+      );
+    };
+    
+    return (
+      <div className="fixed top-0 right-0 bottom-0 w-96 bg-zinc-900 border-l border-zinc-800 shadow-xl z-40 p-4 overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Select Model</h3>
+          <button 
+            className="text-zinc-400 hover:text-white"
+            onClick={closeModelSelector}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="flex items-center mb-4">
+          <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-[83px]" />
+          <Input
+            type="text"
+            placeholder="Search models..."
+            className="pl-9 pr-4 py-2 text-sm w-full bg-zinc-800 border-zinc-700"
+            value={modelSearch}
+            onChange={(e) => setModelSearch(e.target.value)}
+          />
+        </div>
+        
+        {modelSearch.trim() ? (
+          // Show search results
+          <div>
+            <div className="mt-3 mb-2">
+              <h3 className="font-medium text-sm text-zinc-400 px-3">
+                Search Results for "{modelSearch}"
+              </h3>
+            </div>
+            {filteredModels.length > 0 ? (
+              <div className="space-y-1 mt-2">
+                {filteredModels.map(model => renderModelButton(model))}
+              </div>
+            ) : (
+              <div className="text-zinc-500 text-sm p-3">No models found</div>
+            )}
+          </div>
+        ) : (
+          // Show normal categorized listing - with reasoning models first
+          <div>
+            {renderModelGroup("Reasoning Models", reasoningModels, <Brain className="h-4 w-4" />)}
+            {renderModelGroup("Vision Models", visionModels, <Eye className="h-4 w-4" />)}
+            {renderModelGroup("Standard Models", standardModels, <MessageSquare className="h-4 w-4" />)}
+            {renderModelGroup("Audio Models", audioModels, <Music className="h-4 w-4" />)}
+            {renderModelGroup("Uncensored Models", uncensoredModels, <Target className="h-4 w-4" />)}
+          </div>
+        )}
+        
+        <div className="border-t border-zinc-800 mt-4 pt-4">
+          <button 
+            className="w-full py-2 border border-zinc-700 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 text-sm"
+            onClick={closeModelSelector}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col h-full w-full relative">
       {/* Show Model Selector if active */}
       {showModelSelector && <ModelSelector />}
-      
-      {/* Show Library if active */}
-      {showLibrary && <CodeLibrary />}
-      
-      {/* Show Tool Results Library if active */}
-      {showToolResultsLibrary && <ToolResultsLibrary />}
-    
-      {/* Chat header with controls moved from bottom */}
-      <div className="bg-black border-b border-[#222222] p-3 z-10">
-        <div className="flex items-center justify-between max-w-5xl mx-auto">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost" 
-              size="sm"
-              className="flex items-center gap-1 hover:text-white text-gray-400 text-sm"
-              onClick={() => setShowModelSelector(true)}
-            >
-              <MessageSquare className="h-4 w-4" />
-              {getModelDisplay(selectedModel)}
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {/* Thread Controls and Actions */}
-            <div className="relative" ref={threadsDropdownRef}>
-              <button
-                className="flex items-center gap-1 hover:text-white text-gray-400 text-sm"
-                onClick={() => setThreadsDropdownOpen(!threadsDropdownOpen)}
-              >
-                <Book className="h-4 w-4" />
-                Threads
-                {threadsDropdownOpen ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </button>
-              
-              {/* Threads Dropdown Menu */}
-              {threadsDropdownOpen && (
-                <div className="absolute right-0 top-[calc(100%+5px)] bg-[#0a0a0a] border border-[#222222] rounded-md shadow-md z-50 min-w-[250px]">
-                  <div className="p-2 border-b border-[#222222]">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="w-full justify-start text-sm text-gray-400 hover:text-white"
-                      onClick={() => {
-                        createNewThread();
-                        setThreadsDropdownOpen(false);
-                      }}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      New Thread
-                    </Button>
-                  </div>
-                  
-                  <div className="max-h-[300px] overflow-y-auto py-1">
-                    {threads.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-gray-500">No threads yet</div>
-                    ) : (
-                      threads
-                        .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime())
-                        .map(thread => (
-                          <div 
-                            key={thread.id} 
-                            className={`px-3 py-2 flex items-center justify-between hover:bg-[#1a1a1a] transition-colors ${activeThreadId === thread.id ? 'bg-[#1a1a1a] text-white' : 'text-gray-400'}`}
-                          >
-                            <button
-                              className="text-left text-sm truncate flex-1"
-                              onClick={() => {
-                                selectThread(thread.id);
-                                setThreadsDropdownOpen(false);
-                              }}
-                            >
-                              {thread.name}
-                            </button>
-                            
-                            <button
-                              className="p-1 hover:text-red-500 transition-colors"
-                              onClick={(e) => deleteThread(thread.id, e)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <Button 
-              variant="ghost"
-              size="sm"
-              className="flex items-center gap-1 hover:text-white text-gray-400 text-sm"
-              onClick={() => setShowLibrary(true)}
-            >
-              <Bookmark className="h-4 w-4" />
-              Code Library
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center gap-1 hover:text-white text-gray-400 text-sm"
-              onClick={() => setShowToolResultsLibrary(true)}
-            >
-              <Wrench className="h-4 w-4" />
-              Tool Results
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Chat body */}
-      <div className="flex-1 overflow-y-auto p-6 pb-32">
-        {messages.map((message, index) => {
-          // Ensure each message has an ID
-          const messageId = message.id || `message-${index}`;
-          
-          return (
-            <div key={messageId} className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  {message.role === 'user' ? (
-                    <div className="w-8 h-8 bg-[#3b82f6] rounded-full flex items-center justify-center text-white">
-                      {message.role.charAt(0).toUpperCase()}
-                    </div>
-                  ) : (
-                    <div className="w-8 h-8 bg-[#6b7280] rounded-full flex items-center justify-center text-white">
-                      {message.role.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <span className="text-sm text-gray-400">{message.role === 'user' ? 'You' : 'Assistant'}</span>
-                  {message.model && message.role === 'assistant' && (
-                    <span className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded">
-                      {getModelDisplay(message.model)}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  {message.role === 'assistant' && message.thinking && (
-                    <button
-                      onClick={() => toggleThinking(messageId)}
-                      className={`text-xs px-2 py-0.5 rounded ${expandedThinking.includes(messageId) ? 'bg-blue-900 text-blue-100' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
-                    >
-                      {expandedThinking.includes(messageId) ? 'Hide thinking' : 'Show thinking'}
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="mt-2">
-                {message.role === 'user' ? (
-                  <>
-                    <pre className="whitespace-pre-wrap">{message.content}</pre>
-                    {/* Display image attachment if present - with better error handling */}
-                    {message.image && (
-                      <div className="mt-2 max-w-md">
-                        <div className="text-xs text-gray-400 mb-1">
-                          Attached image (size: {message.image.length} characters)
-                        </div>
-                        <img 
-                          src={message.image} 
-                          alt="Attached image" 
-                          className="rounded-md max-h-80 object-contain border border-gray-700"
-                          onLoad={() => console.log("Image loaded successfully in message", message.id)}
-                          onError={(e) => {
-                            console.error("Failed to load image in message", message.id, "Image data length:", message.image?.length || 0);
-                            // Replace with error message
-                            e.currentTarget.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJkMmQyZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOHB4IiBmaWxsPSIjZmZmIj5FcnJvciBsb2FkaW5nIGltYWdlPC90ZXh0Pjwvc3ZnPg==";
-                            e.currentTarget.className = "rounded-md max-h-80 object-contain border border-red-500";
-                          }}
-                        />
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <ReactMarkdown
-                    components={renderers}
-                    remarkPlugins={[remarkGfm]}
-                  >
-                    {message.content}
-                  </ReactMarkdown>
-                )}
-                {message.role === 'assistant' && message.thinking && (
-                  <div className={`mt-3 border border-blue-800 bg-blue-900/20 p-3 rounded-md ${expandedThinking.includes(messageId) ? '' : 'hidden'}`}>
-                    <div className="text-xs text-blue-400 mb-2 font-medium">Model thinking process:</div>
-                    <ReactMarkdown
-                      components={renderers}
-                      remarkPlugins={[remarkGfm]}
-                    >
-                      {message.thinking}
-                    </ReactMarkdown>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-        {isLoading && <TypingIndicator />}
-        <div ref={endOfMessagesRef} />
-      </div>
-
-      {/* Input area */}
-      <div className="absolute bottom-0 left-0 right-0 bg-black border-t border-[#222222] p-4 z-10">
-        {codePreview && (
-          <CodePreview
-            code={codePreview.code}
-            language={codePreview.language}
-            id={codePreview.id}
-            isSaving={isSavingArtifact}
-            setIsSaving={setIsSavingArtifact}
-            artifactTitle={artifactTitle}
-            setArtifactTitle={setArtifactTitle}
-            artifactDescription={artifactDescription}
-            setArtifactDescription={setArtifactDescription}
-            toggleSaving={toggleSavingArtifact}
-          />
-        )}
-
-        {/* Prompt Studio Modal */}
-        <PromptStudioModal
-          isOpen={isPromptStudioOpen}
-          onClose={() => setIsPromptStudioOpen(false)}
-          onSelectTemplate={handleSelectTemplate}
-        />
-
-        <VariableManagerModal
-          isOpen={isVariableManagerOpen}
-          onClose={() => setIsVariableManagerOpen(false)}
-        />
-
-        {/* Image attachment preview */}
-        {imageAttachment && (
-          <div className="max-w-5xl mx-auto mb-2 p-2 border border-gray-700 rounded-md bg-[#111] flex items-center">
-            <div className="flex-shrink-0 mr-2">
-              <img
-                src={imageAttachment}
-                alt="Image attachment"
-                className="h-16 w-auto object-cover rounded-md"
-                onLoad={() => console.log("Preview image loaded successfully, data length:", imageAttachment.length)}
-              />
-            </div>
-            <div className="flex-1 min-w-0 text-gray-400 text-sm">
-              Attached image
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-gray-400 hover:text-white p-1 h-auto"
-              onClick={removeImageAttachment}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        <div className="flex items-start gap-2 max-w-5xl mx-auto">
-          {/* Button to open Prompt Studio */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={() => setIsPromptStudioOpen(true)}
-                  className="p-2 h-auto"
-                  variant="outline"
-                  aria-label="Open Prompt Studio"
-                >
-                  <LayoutTemplate size={20} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Open Prompt Studio</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          {/* Button to open Variable Manager Modal */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="hover:bg-gray-800 text-gray-400 hover:text-white"
-                  onClick={() => setIsVariableManagerOpen(true)}
-                  disabled={isLoading}
-                >
-                  <Wrench className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="bg-zinc-800 text-white text-xs px-2 py-1 rounded-md">
-                Manage Variables
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          {/* Add image upload button with Lucide icon */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="hover:bg-gray-800 text-gray-400 hover:text-white"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isLoading}
-                >
-                  <ImagePlus className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="bg-zinc-800 text-white text-xs px-2 py-1 rounded-md">
-                Upload Image
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          {/* Hidden file input */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept="image/*"
-            onChange={handleFileInputChange}
-            style={{ display: 'none' }}
-          />
-
-          <Textarea
-            ref={inputRef}
-            rows={1}
-            value={inputValue}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            placeholder="Ask a question or prompt the assistant..."
-            className="flex-1 bg-[#111111] border-gray-800 focus:border-blue-500 min-h-[60px] max-h-[200px] placeholder:text-gray-400 shadow-inner rounded-md text-white p-3 overflow-y-auto"
-            disabled={isLoading || isProcessingImage} // Disable textarea while processing image
-          />
-          <Button
-            onClick={handleSend}
-            // Update disabled condition
-            disabled={(!inputValue.trim() && !imageAttachment) || isLoading || isProcessingImage}
-            className={cn(
-              "h-[60px] rounded-md flex items-center justify-center px-4 transition-all duration-200 transform shadow-sm",
-              // Update disabled style condition
-              (!inputValue.trim() && !imageAttachment) || isLoading || isProcessingImage 
-                ? "bg-gray-800 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700 hover:shadow-lg hover:translate-y-[-2px]"
-            )}
-          >
-            <div className="relative flex items-center justify-center">
-              {isLoading ? (
-                <RefreshCw className="h-5 w-5 animate-spin text-white" />
-              ) : (
-                <Send className="h-5 w-5 text-white" />
-              )}
-            </div>
-          </Button>
-        </div>
-
-        {/* Add a light gray highlight around the input area */}
-        <div className="max-w-5xl mx-auto mt-1">
-          <div className="text-xs text-gray-500 flex items-center">
-            <span>Press <kbd className="px-1 py-0.5 bg-gray-800 rounded text-gray-400 mx-1 border border-gray-700">Enter</kbd> to send, <kbd className="px-1 py-0.5 bg-gray-800 rounded text-gray-400 mx-1 border border-gray-700">Shift+Enter</kbd> for new line</span>
-          </div>
-        </div>
-
-        {/* Sample Suggestions */}
-        {suggestions.length > 0 && (
-          <div className="mt-3 max-w-5xl mx-auto overflow-x-auto pb-2 flex space-x-2 no-scrollbar">
-            {suggestions.map((suggestion, index) => (
-              <Button
-                key={index}
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs text-gray-400 hover:text-white flex-shrink-0"
-                onClick={() => setInputValue(suggestion)}
-              >
-                {suggestion}
-              </Button>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

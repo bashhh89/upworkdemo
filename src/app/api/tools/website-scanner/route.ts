@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createToolResult } from '@/lib/tool-utils';
-import { v4 as uuidv4 } from 'uuid';
-
 export async function POST(request: Request) {
   try {
     const { url } = await request.json();
@@ -22,7 +20,7 @@ export async function POST(request: Request) {
       }
       
       new URL(formattedUrl);
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid URL format. Please enter a valid website URL.' },
         { status: 400 }
@@ -63,8 +61,7 @@ Analysis of ${domain} complete:
       mockData,
       summary,
       { url: formattedUrl },
-      formattedUrl,
-      uuidv4() // Generate a unique ID for the result
+      formattedUrl // Generate a unique ID for the result
     );
     
     // Save the result to localStorage via client-side code

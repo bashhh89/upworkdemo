@@ -275,448 +275,127 @@ Rules for the next question:
                 
                 const data = await response.json();
       
-      if (data.content) {
+      // Extract content from either format (Pollinations or OpenAI style)
+      let content = data.content;
+      if (!content && data.choices && Array.isArray(data.choices) && data.choices[0]?.message?.content) {
+        content = data.choices[0].message.content;
+      }
+      
+      if (content) {
         try {
-          // Parse the next question
-          const nextQuestionData = JSON.parse(data.content);
+          // Parse the report
+          const parsedReport = JSON.parse(content);
           
-          // Validate the question
-          if (!nextQuestionData.questionText) {
-            throw new Error("Missing question text");
-          }
+          setFinalScore(scorePercent);
+          setScoreCategory(category);
           
-          // Detect question type if not specified or incorrectly specified
-          if (!['yesno', 'scale', 'radio', 'textarea'].includes(nextQuestionData.inputType)) {
-            nextQuestionData.inputType = detectQuestionType(nextQuestionData.questionText);
-          }
-          
-          // Create default options if needed
-          if ((nextQuestionData.inputType === 'scale' || nextQuestionData.inputType === 'radio') && 
-              (!nextQuestionData.options || !Array.isArray(nextQuestionData.options) || nextQuestionData.options.length === 0)) {
-            nextQuestionData.options = getDefaultOptions(nextQuestionData.inputType);
-          }
-          
-          // Create a new question object
-          const newQuestion: AiQuestion = {
-            id: `q${questions.length + 1}`,
-            questionText: nextQuestionData.questionText,
-            inputType: nextQuestionData.inputType,
-            options: nextQuestionData.options,
-            category: nextQuestionData.category || "General"
-          };
-          
-          // Add the new question and advance to it
-          setQuestions(prevQuestions => [...prevQuestions, newQuestion]);
-          setCurrentQuestionIndex(currentQuestionIndex + 1);
-          
-          // Check if we've reached 20 questions
-          if (questions.length + 1 >= totalQuestions) {
-            setIsFinished(true);
-          }
+          // Validate and set the report with fallbacks for each section
+          setAiReport({
+            keyFindings: parsedReport.keyFindings || "• Based on your responses, we've identified some key areas for improvement.",
+            nextSteps: Array.isArray(parsedReport.nextSteps) ? parsedReport.nextSteps : getRecommendations(scorePercent).slice(0, 4),
+            checklist: Array.isArray(parsedReport.checklist) ? parsedReport.checklist : getRecommendations(scorePercent).slice(0, 3),
+            toolSuggestions: Array.isArray(parsedReport.toolSuggestions) ? parsedReport.toolSuggestions : [
+              {
+                name: "ChatGPT",
+                description: "Generative AI assistant for content creation and ideation",
+                useCase: "Use for drafting content, brainstorming ideas, and answering research questions",
+                category: "Content Creation"
+              },
+              {
+                name: "Zapier",
+                description: "Automation platform with AI capabilities",
+                useCase: "Connect your tools and automate workflows with AI-enhanced capabilities",
+                category: "Automation"
+              }
+            ],
+            prompts: Array.isArray(parsedReport.prompts) ? parsedReport.prompts : [
+              {
+                title: "Content Creation",
+                prompt: "Create a [content type] about [topic] for [audience]. The tone should be [tone]. Include these key points: [points].",
+                useCase: "Use this to quickly generate first drafts of marketing content"
+              }
+            ]
+          });
         } catch (parseError) {
-          console.error("Error parsing question:", parseError);
+          console.error("Error parsing API response:", parseError);
           
-          // Create a fallback question if parsing fails
-          const fallbackQuestion: AiQuestion = {
-            id: `q${questions.length + 1}`,
-            questionText: `How would you rate your organization's readiness to implement AI solutions?`,
-            inputType: "scale",
-            options: ["1", "2", "3", "4", "5"],
-            category: "General Assessment"
-          };
-          
-          setQuestions(prevQuestions => [...prevQuestions, fallbackQuestion]);
-          setCurrentQuestionIndex(currentQuestionIndex + 1);
-          setError({
-            message: "We had trouble creating a personalized question, so we're using a standard one.",
-            details: parseError.message
+          // Fallback to calculated score and recommendations
+          setFinalScore(scorePercent);
+          setScoreCategory(category);
+          setAiReport({
+            keyFindings: "• Based on your responses, we've identified key areas for AI improvement.\n• Your organization shows potential but needs a structured approach.",
+            nextSteps: getRecommendations(scorePercent).slice(0, 4),
+            checklist: getRecommendations(scorePercent).slice(0, 3),
+            toolSuggestions: [
+              {
+                name: "ChatGPT",
+                description: "Generative AI assistant for content creation and ideation",
+                useCase: "Use for drafting content, brainstorming ideas, and answering research questions",
+                category: "Content Creation"
+              },
+              {
+                name: "Zapier",
+                description: "Automation platform with AI capabilities",
+                useCase: "Connect your tools and automate workflows with AI-enhanced capabilities",
+                category: "Automation"
+              }
+            ],
+            prompts: [
+              {
+                title: "Content Creation",
+                prompt: "Create a [content type] about [topic] for [audience]. The tone should be [tone]. Include these key points: [points].",
+                useCase: "Use this to quickly generate first drafts of marketing content"
+              }
+            ]
           });
           
-          // Check if we've reached 20 questions
-          if (questions.length + 1 >= totalQuestions) {
-            setIsFinished(true);
-          }
+          setError({
+            message: "Could not parse the AI report, using simplified results instead.",
+            details: parseError instanceof Error ? parseError.message : "Unknown parsing error"
+          });
         }
       } else {
         throw new Error("No content in API response");
       }
     } catch (error) {
-      console.error("Error fetching next question:", error);
+      console.error("Error generating report:", error);
+      
+      // Fallback to calculated scores and basic recommendations
+      setFinalScore(scorePercent);
+      setScoreCategory(category);
+      setAiReport({
+        keyFindings: "• Based on your responses, we've identified some key areas for AI improvement.\n• Your organization shows potential but needs a structured approach.",
+        nextSteps: getRecommendations(scorePercent).slice(0, 4),
+        checklist: getRecommendations(scorePercent).slice(0, 3),
+        toolSuggestions: [
+          {
+            name: "ChatGPT",
+            description: "Generative AI assistant for content creation and ideation",
+            useCase: "Use for drafting content, brainstorming ideas, and answering research questions",
+            category: "Content Creation"
+          },
+          {
+            name: "Zapier",
+            description: "Automation platform with AI capabilities",
+            useCase: "Connect your tools and automate workflows with AI-enhanced capabilities",
+            category: "Automation"
+          }
+        ],
+        prompts: [
+          {
+            title: "Content Creation",
+            prompt: "Create a [content type] about [topic] for [audience]. The tone should be [tone]. Include these key points: [points].",
+            useCase: "Use this to quickly generate first drafts of marketing content"
+          }
+        ]
+      });
+      
       setError({
-        message: "Error fetching the next question. Try again or continue with a standard question.",
+        message: "Error generating detailed report, using simplified results instead.",
         details: error instanceof Error ? error.message : "Unknown error"
       });
-      
-      // Add a fallback question if error occurs
-      const fallbackQuestion: AiQuestion = {
-        id: `q${questions.length + 1}`,
-        questionText: "How important is AI adoption to your organization's future strategy?",
-        inputType: "scale",
-        options: ["1", "2", "3", "4", "5"],
-        category: "Strategy & Goals"
-      };
-      
-      setQuestions(prevQuestions => [...prevQuestions, fallbackQuestion]);
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      
-      // Check if we've reached 20 questions
-      if (questions.length + 1 >= totalQuestions) {
-        setIsFinished(true);
-      }
     } finally {
       setIsLoading(false);
-    }
-  };
-  
-  // Helper to format answers for display
-  const formatAnswerForDisplay = (answer: any, inputType?: string): string => {
-    if (answer === undefined) return 'Not answered';
-    
-    switch (inputType) {
-      case 'yesno':
-        return answer === true ? 'Yes' : 'No';
-      case 'scale':
-        return `Rating: ${answer}/5`;
-      case 'radio':
-        return `Selected: ${answer}`;
-      default:
-        return answer.toString();
-    }
-  };
-  
-  // Navigate to the next question
-  const handleNext = () => {
-    if (isFinished) {
-      // Generate report if we've reached 20 questions
-      handleGenerateReport();
-    } else {
-      // Otherwise get the next question
-      getNextQuestion();
-    }
-  };
-  
-  // Navigate to the previous question
-  const handlePrevious = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-    }
-  };
-  
-  // Generate the final report
-  const handleGenerateReport = async () => {
-        setIsLoading(true);
-        setError(null);
-        
-        try {
-      // Prepare all Q&A for the report
-      const allQA = questions.map(q => {
-        const answer = answers[q.id];
-        return {
-          question: q.questionText,
-          answer: formatAnswerForDisplay(answer, q.inputType),
-          category: q.category || "General"
-        };
-      });
-      
-      // Calculate a basic score based on the answers
-      let totalPoints = 0;
-      let maxPossible = 0;
-      
-      questions.forEach(q => {
-        const answer = answers[q.id];
-        if (answer === undefined) return;
-        
-        maxPossible += 5; // Max 5 points per question
-        
-        if (q.inputType === 'yesno') {
-          totalPoints += answer === true ? 5 : 0;
-        } 
-        else if (q.inputType === 'scale') {
-          totalPoints += parseInt(answer, 10);
-        }
-        else if (q.inputType === 'radio' && q.options) {
-          const optionIndex = q.options.indexOf(answer);
-          const maxOptions = q.options.length;
-          if (optionIndex !== -1) {
-            totalPoints += Math.round(((optionIndex + 1) / maxOptions) * 5);
-          }
-        }
-        // No points for textarea
-      });
-      
-      const scorePercent = Math.round((totalPoints / maxPossible) * 100);
-      const category = getScoreCategory(scorePercent);
-      
-      // Extract key themes and terms for search
-      let searchTerms = "";
-      const textResponses = questions
-        .filter(q => q.inputType === 'textarea')
-        .map(q => answers[q.id])
-        .filter(answer => answer && typeof answer === 'string');
-        
-      if (textResponses.length > 0) {
-        // Use the text responses to identify specific areas of interest
-        const extractTermsPrompt = `
-          The user is completing an AI readiness assessment. Here are their open-ended responses:
-          ${textResponses.join("\n\n")}
-          
-          Based on these responses, provide a comma-separated list of 5-7 specific AI tools, 
-          technologies, or approaches that would be most relevant for their organization.
-          Be specific and focus on actual tools or concrete approaches, not generic categories.
-          For example, "LangChain, HuggingFace, Claude API, Zapier AI Actions" not just "AI platforms".
-        `;
-        
-        try {
-          const termsResponse = await fetch('/api/pollinations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model: "openai-large",
-              messages: [
-                { role: "system", content: "You extract specific tools and technologies from user responses." },
-                { role: "user", content: extractTermsPrompt }
-              ],
-              temperature: 0.3
-            })
-          });
-          
-          if (termsResponse.ok) {
-            const termsData = await termsResponse.json();
-            if (termsData.content) {
-              searchTerms = termsData.content;
-            }
-          }
-        } catch (searchError) {
-          console.error("Error extracting search terms:", searchError);
-          // Continue with default search terms if extraction fails
-        }
-      }
-      
-      // If we couldn't extract specific terms, generate generic ones based on score category
-      if (!searchTerms) {
-        searchTerms = category === "Beginner" 
-          ? "best AI tools for beginners, no-code AI tools, starter AI platforms" 
-          : category === "Intermediate" 
-            ? "AI integration tools for business, mid-level AI automation platforms" 
-            : "enterprise AI solutions, advanced AI workflow tools, AI governance platforms";
-      }
-      
-      // Generate AI report using web search for real recommendations
-      const systemPrompt = `You are an expert AI implementation consultant analyzing the results of an AI readiness assessment.
-Generate a detailed, insightful report based on these responses and real-world AI tools.
-
-Assessment responses:
-${allQA.map(qa => `Q: ${qa.question}\nA: ${qa.answer}\nCategory: ${qa.category}`).join('\n\n')}
-
-The calculated score is: ${scorePercent}% (${category} level).
-
-I will now search for real-world AI tools and solutions that match this organization's needs.
-Based on their responses, I should search for: ${searchTerms}
-
-After reviewing search results, generate a comprehensive report with these exact sections:
-1. Key Findings (3-4 bullet points with clear insights from the assessment)
-2. Next Steps (4-5 prioritized action items)
-3. Checklist (3-4 immediate action items)
-4. Tool Recommendations (3-5 specific, real AI tools with use cases)
-5. Prompt Templates (2-3 specific prompt templates they can use for their needs)
-
-Your response MUST be a valid JSON object with these exact keys:
-{
-  "scorePercent": ${scorePercent},
-  "keyFindings": "• Finding 1\\n• Finding 2\\n• Finding 3\\n• Finding 4",
-  "nextSteps": ["Step 1", "Step 2", "Step 3", "Step 4", "Step 5"],
-  "checklist": ["Task 1", "Task 2", "Task 3", "Task 4"],
-  "toolSuggestions": [
-    {
-      "name": "Tool Name 1",
-      "description": "Brief description of what it does",
-      "useCase": "How they can use it in their context",
-      "category": "Content Creation"
-    },
-    {
-      "name": "Tool Name 2",
-      "description": "Brief description of what it does",
-      "useCase": "How they can use it in their context",
-      "category": "Data Analysis"
-    }
-  ],
-  "prompts": [
-    {
-      "title": "Content Brainstorming",
-      "prompt": "I need ideas for content about [topic]. The target audience is [audience]. The goals are [goals]. Generate 10 content ideas that would resonate with this audience.",
-      "useCase": "Use this prompt when planning your content calendar"
-    }
-  ]
-}
-
-Ensure your JSON is valid with no trailing commas or other syntax errors.`;
-
-      // First, perform a web search for actual tools based on their responses
-      try {
-        // Use the pollinations SearchGPT endpoint
-        const searchResponse = await fetch('/api/pollinations/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: `Best AI tools and platforms for ${category.toLowerCase()} level organizations: ${searchTerms}`,
-            num_results: 5
-          })
-        });
-        
-        let searchResults = "";
-        
-        if (searchResponse.ok) {
-          const searchData = await searchResponse.json();
-          searchResults = searchData.results 
-            ? searchData.results.map((r: any) => `${r.title}: ${r.snippet}`).join("\n\n") 
-            : "";
-        }
-        
-        // Now generate the report with the search results incorporated
-        const response = await fetch('/api/pollinations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: "openai-large",
-                messages: [
-                    { role: "system", content: systemPrompt },
-              { role: "user", content: `Generate my AI readiness assessment report in JSON format. 
-              Here are the search results for relevant tools:\n${searchResults}` }
-                ],
-                response_format: { "type": "json_object" },
-            temperature: 0.3
-          })
-            });
-            
-            if (!response.ok) {
-                throw new Error(`API call failed with status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            if (data.content) {
-                try {
-            // Parse the report
-            const parsedReport = JSON.parse(data.content);
-            
-            setFinalScore(scorePercent);
-            setScoreCategory(category);
-            
-            // Validate and set the report with fallbacks for each section
-                        setAiReport({
-              keyFindings: parsedReport.keyFindings || "• Based on your responses, we've identified some key areas for improvement.",
-              nextSteps: Array.isArray(parsedReport.nextSteps) ? parsedReport.nextSteps : getRecommendations(scorePercent).slice(0, 4),
-              checklist: Array.isArray(parsedReport.checklist) ? parsedReport.checklist : getRecommendations(scorePercent).slice(0, 3),
-              toolSuggestions: Array.isArray(parsedReport.toolSuggestions) ? parsedReport.toolSuggestions : [
-                {
-                  name: "ChatGPT",
-                  description: "Generative AI assistant for content creation and ideation",
-                  useCase: "Use for drafting content, brainstorming ideas, and answering research questions",
-                  category: "Content Creation"
-                },
-                {
-                  name: "Zapier",
-                  description: "Automation platform with AI capabilities",
-                  useCase: "Connect your tools and automate workflows with AI-enhanced capabilities",
-                  category: "Automation"
-                }
-              ],
-              prompts: Array.isArray(parsedReport.prompts) ? parsedReport.prompts : [
-                {
-                  title: "Content Creation",
-                  prompt: "Create a [content type] about [topic] for [audience]. The tone should be [tone]. Include these key points: [points].",
-                  useCase: "Use this to quickly generate first drafts of marketing content"
-                }
-              ]
-            });
-                } catch (parseError) {
-                    console.error("Error parsing API response:", parseError);
-            
-            // Fallback to calculated score and recommendations
-            setFinalScore(scorePercent);
-            setScoreCategory(category);
-            setAiReport({
-              keyFindings: "• Based on your responses, we've identified key areas for AI improvement.\n• Your organization shows potential but needs a structured approach.",
-              nextSteps: getRecommendations(scorePercent).slice(0, 4),
-              checklist: getRecommendations(scorePercent).slice(0, 3),
-              toolSuggestions: [
-                {
-                  name: "ChatGPT",
-                  description: "Generative AI assistant for content creation and ideation",
-                  useCase: "Use for drafting content, brainstorming ideas, and answering research questions",
-                  category: "Content Creation"
-                },
-                {
-                  name: "Zapier",
-                  description: "Automation platform with AI capabilities",
-                  useCase: "Connect your tools and automate workflows with AI-enhanced capabilities",
-                  category: "Automation"
-                }
-              ],
-              prompts: [
-                {
-                  title: "Content Creation",
-                  prompt: "Create a [content type] about [topic] for [audience]. The tone should be [tone]. Include these key points: [points].",
-                  useCase: "Use this to quickly generate first drafts of marketing content"
-                }
-              ]
-            });
-            
-            setError({
-              message: "Could not parse the AI report, using simplified results instead.",
-              details: parseError instanceof Error ? parseError.message : "Unknown parsing error"
-            });
-                }
-            } else {
-                throw new Error("No content in API response");
-            }
-        } catch (error) {
-            console.error("Error generating report:", error);
-        
-        // Fallback to calculated scores and basic recommendations
-        setFinalScore(scorePercent);
-        setScoreCategory(category);
-        setAiReport({
-          keyFindings: "• Based on your responses, we've identified some key areas for AI improvement.\n• Your organization shows potential but needs a structured approach.",
-          nextSteps: getRecommendations(scorePercent).slice(0, 4),
-          checklist: getRecommendations(scorePercent).slice(0, 3),
-          toolSuggestions: [
-            {
-              name: "ChatGPT",
-              description: "Generative AI assistant for content creation and ideation",
-              useCase: "Use for drafting content, brainstorming ideas, and answering research questions",
-              category: "Content Creation"
-            },
-            {
-              name: "Zapier",
-              description: "Automation platform with AI capabilities",
-              useCase: "Connect your tools and automate workflows with AI-enhanced capabilities",
-              category: "Automation"
-            }
-          ],
-          prompts: [
-            {
-              title: "Content Creation",
-              prompt: "Create a [content type] about [topic] for [audience]. The tone should be [tone]. Include these key points: [points].",
-              useCase: "Use this to quickly generate first drafts of marketing content"
-            }
-          ]
-        });
-        
-        setError({
-          message: "Error generating detailed report, using simplified results instead.",
-          details: error instanceof Error ? error.message : "Unknown error"
-        });
-        } finally {
-        setIsLoading(false);
-      }
-    } catch (error) {
-      console.error("Error in report generation process:", error);
-      setIsLoading(false);
-      setError({
-        message: "A critical error occurred during report generation",
-        details: error instanceof Error ? error.message : "Unknown critical error"
-      });
     }
   };
   

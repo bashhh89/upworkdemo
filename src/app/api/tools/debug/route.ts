@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { availableTools } from '@/lib/tool-utils';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     // Return a list of all available tools and their details
     return NextResponse.json({

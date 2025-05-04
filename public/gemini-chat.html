@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gemini Chat Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 500px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+    .message {
+      margin-bottom: 15px;
+      padding: 10px 15px;
+      border-radius: 18px;
+      max-width: 70%;
+    }
+    .user {
+      background-color: #e1f5fe;
+      align-self: flex-end;
+      margin-left: auto;
+    }
+    .bot {
+      background-color: #f1f1f1;
+      align-self: flex-start;
+    }
+    .input-area {
+      display: flex;
+      padding: 10px;
+      background-color: white;
+      border-top: 1px solid #ddd;
+    }
+    input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    button {
+      margin-left: 10px;
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .settings {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Gemini Chat Test</h1>
+  
+  <div class="settings">
+    <label>
+      <input type="radio" name="endpoint" value="direct" checked> Use Direct Pollinations API
+    </label>
+    <label>
+      <input type="radio" name="endpoint" value="our-api"> Use Our API Proxy
+    </label>
+  </div>
+  
+  <div class="chat-container">
+    <div class="messages" id="messages">
+      <div class="message bot">Hi! I'm Gemini. Ask me anything.</div>
+    </div>
+    <div class="input-area">
+      <input type="text" id="userInput" placeholder="Type a message..." autocomplete="off">
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+  
+  <script>
+    const messagesContainer = document.getElementById('messages');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    
+    // Send message when Send button is clicked
+    sendBtn.addEventListener('click', sendMessage);
+    
+    // Send message when Enter key is pressed
+    userInput.addEventListener('keypress', function(event) {
+      if (event.key === 'Enter') {
+        sendMessage();
+      }
+    });
+    
+    async function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+      
+      // Add user message to chat
+      addMessage(message, 'user');
+      userInput.value = '';
+      
+      // Get selected endpoint
+      const useDirectApi = document.querySelector('input[name="endpoint"]:checked').value === 'direct';
+      
+      try {
+        // Show typing indicator
+        const loadingId = addMessage('...', 'bot');
+        
+        let response;
+        let responseText;
+        
+        if (useDirectApi) {
+          // Direct call to Pollinations
+          const encodedMessage = encodeURIComponent(message);
+          response = await fetch(`https://text.pollinations.ai/${encodedMessage}?model=gemini`);
+          responseText = await response.text();
+        } else {
+          // Call our API endpoint
+          response = await fetch(`/api/pollinations?prompt=${encodeURIComponent(message)}&model=gemini`);
+          responseText = await response.text();
+        }
+        
+        // Replace typing indicator with response
+        updateMessage(loadingId, responseText);
+        
+      } catch (error) {
+        // Show error message
+        addMessage(`Error: ${error.message}`, 'bot');
+      }
+    }
+    
+    function addMessage(text, sender) {
+      const message = document.createElement('div');
+      message.classList.add('message', sender);
+      message.textContent = text;
+      message.id = 'msg-' + Date.now();
+      messagesContainer.appendChild(message);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      return message.id;
+    }
+    
+    function updateMessage(id, text) {
+      const message = document.getElementById(id);
+      if (message) {
+        message.textContent = text;
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+    }
+  </script>
+</body>
+</html> 

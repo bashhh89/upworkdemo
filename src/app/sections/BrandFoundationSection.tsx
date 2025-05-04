@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,16 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
-import { 
-  Palette, 
-  Lightbulb, 
-  MessageSquare, 
-  Target, 
-  Sparkles, 
-  Download, 
-  ArrowRight, 
-  Check, 
-  Copy, 
+import {
+  Palette,
+  MessageSquare,
+  Target,
+  Sparkles,
+  Download,
+  ArrowRight,
+  Check,
   Image as ImageIcon,
   Clipboard,
   PenTool,

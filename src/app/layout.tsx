@@ -1,32 +1,37 @@
 import './globals.css'
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import { Toaster } from '@/components/ui/toaster'
+import { Toaster } from "sonner"
+import { ThemeProvider } from "next-themes"
+import { cn } from "@/lib/utils"
 
 // Import buffer shim if it exists
 try {
-  require('@/lib/buffer-shim');
-} catch (e) {
+  await import('@/lib/buffer-shim');
+} catch {
   console.warn("buffer-shim not found, skipping import");
 }
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Deliver AI Assistant',
   description: 'AI-powered marketing and sales assistant',
 }
 
-export default function RootLayout({
-  children,
-}: {
+type RootLayoutProps = {
   children: React.ReactNode
-}) {
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.className} h-screen dark bg-[#0a0a0a]`}>
-        {children}
-        <Toaster />
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={cn(
+          "min-h-screen bg-zinc-950 text-zinc-100 font-sans antialiased theme-default"
+        )}
+      >
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <Toaster />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   )

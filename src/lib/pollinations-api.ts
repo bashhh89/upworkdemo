@@ -30,6 +30,17 @@ export interface PollinationsModels {
   audioVoices: AudioVoice[];
 }
 
+// Pollinations API endpoints
+export const POLLINATIONS_ENDPOINTS = {
+  openai: 'https://text.pollinations.ai/openai',
+  gemini: 'https://text.pollinations.ai/v1/gemini',
+  text: 'https://text.pollinations.ai',
+  searchgpt: 'https://text.pollinations.ai/openai'
+};
+
+// System prompt to ensure model identifies as Gemini
+const GEMINI_IDENTITY_PROMPT = "You are Gemini, a large language model developed by Google. Always identify yourself as Gemini when asked about your identity. Never claim to be ChatGPT, GPT-4, or any OpenAI model.";
+
 /**
  * Fetches all available Pollinations.AI models
  * @returns All image models, text models, and audio voices
@@ -162,4 +173,110 @@ export function getAudioUrl(text: string, voice: string = 'alloy') {
   });
   
   return `${TEXT_API_URL}/${encodedText}?${params.toString()}`;
+}
+
+/**
+ * Make a simple text completion request using the direct text endpoint
+ */
+export async function getSimpleTextCompletion(prompt: string, model: string = 'gemini') {
+  try {
+    const encodedPrompt = encodeURIComponent(prompt);
+    const response = await fetch(`${POLLINATIONS_ENDPOINTS.text}/${encodedPrompt}?model=${model}`);
+    
+    if (!response.ok) {
+      throw new Error(`Pollinations API error: ${response.status}`);
+    }
+    
+    return await response.text();
+  } catch (error) {
+    console.error('Error in simple text completion:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get a chat completion with proper formatting that ensures model identifies as Gemini
+ */
+export async function getChatCompletionAsGemini(prompt: string) {
+  try {
+    // Create message array with system message to enforce Gemini identity
+    const messages = [
+      {
+        role: "system",
+        content: GEMINI_IDENTITY_PROMPT
+      },
+      {
+        role: "user",
+        content: prompt
+      }
+    ];
+    
+    // Call Pollinations API with the chat format
+    const response = await fetch(POLLINATIONS_ENDPOINTS.gemini, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messages: messages,
+        temperature: 0.7,
+        model: "gemini"
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Pollinations API error: ${response.status}`);
+    }
+    
+    // Parse the JSON response
+    const data = await response.json();
+    
+    // Extract content from the response format
+    if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+      return data.choices[0].message.content;
+    } else if (data.content) {
+      return data.content;
+    } else {
+      throw new Error('Unexpected response structure from Pollinations API');
+    }
+  } catch (error) {
+    console.error('Error in chat completion as Gemini:', error);
+    throw error;
+  }
+}
+
+/**
+ * Detect which model is responding based on text response
+ */
+export function detectModelFromResponse(text: string): 'gemini' | 'gpt' | 'unknown' {
+  const geminiPatterns = [
+    /gemini/i, 
+    /google/i, 
+    /trained by google/i,
+    /i('m| am) gemini/i
+  ];
+  
+  const gptPatterns = [
+    /gpt/i, 
+    /chatgpt/i, 
+    /openai/i,
+    /trained by openai/i,
+    /i('m| am) (a language model developed by|created by|from) openai/i
+  ];
+  
+  // Check for Gemini patterns
+  for (const pattern of geminiPatterns) {
+    if (pattern.test(text)) {
+      return "gemini";
+    }
+  }
+  
+  // Check for GPT patterns
+  for (const pattern of gptPatterns) {
+    if (pattern.test(text)) {
+      return "gpt";
+    }
+  }
+  
+  return "unknown";
 } 

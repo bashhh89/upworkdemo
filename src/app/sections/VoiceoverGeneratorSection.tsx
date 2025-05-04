@@ -44,8 +44,11 @@ export function VoiceoverGeneratorSection() {
             const payload = {
                 "model": "openai-audio",
                 "messages": [{ "role": "user", "content": textInput }],
-                "voice": selectedVoice,
-                "response_format": { "type": "audio" }
+                "modalities": ["text", "audio"],
+                "audio": { 
+                    "voice": selectedVoice,
+                    "format": "mp3"
+                }
             };
 
             const response = await fetch('https://text.pollinations.ai/openai', {
@@ -58,11 +61,26 @@ export function VoiceoverGeneratorSection() {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`API error: ${response.status} ${response.statusText} - ${errorText}`);
+                console.error("API error response:", errorText);
+                let errorDetails = "";
+                try {
+                    // Try to parse the error as JSON to extract detailed message
+                    const errorData = JSON.parse(errorText);
+                    if (errorData.error && errorData.details && errorData.details.error) {
+                        errorDetails = errorData.details.error.message || errorData.error;
+                    } else {
+                        errorDetails = errorData.error || errorText;
+                    }
+                } catch (parseError) {
+                    // If not JSON, use the raw text
+                    errorDetails = errorText;
+                }
+                throw new Error(`API error: ${response.status} - ${errorDetails}`);
             }
 
             const contentType = response.headers.get('Content-Type');
             if (contentType && contentType.includes('audio/mpeg')) {
+                // Direct audio response handling (original path)
                 const audioBlob = await response.blob();
                 // Revoke previous URL before creating a new one
                 if (audioUrl) {
@@ -71,9 +89,38 @@ export function VoiceoverGeneratorSection() {
                 const url = URL.createObjectURL(audioBlob);
                 setAudioUrl(url);
             } else {
-                 const errorText = await response.text();
-                 // Assuming non-audio content means an API error message
-                 throw new Error(`Unexpected API response format. Details: ${errorText}`);
+                // New path for JSON response with embedded audio data
+                const responseData = await response.json();
+
+                // Check if response contains the OpenAI format with audio data
+                if (responseData.choices && 
+                    responseData.choices[0]?.message?.audio?.data) {
+                    
+                    // Extract the Base64 audio data
+                    const audioBase64 = responseData.choices[0].message.audio.data;
+                    
+                    // Convert Base64 to Blob
+                    const byteCharacters = atob(audioBase64);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const audioBlob = new Blob([byteArray], { type: 'audio/mpeg' });
+                    
+                    // Revoke previous URL before creating a new one
+                    if (audioUrl) {
+                        URL.revokeObjectURL(audioUrl);
+                    }
+                    
+                    // Create audio URL from the blob
+                    const url = URL.createObjectURL(audioBlob);
+                    setAudioUrl(url);
+                } else {
+                    // Neither direct audio nor expected JSON format
+                    const errorText = JSON.stringify(responseData);
+                    throw new Error(`Unexpected API response format. Details: ${errorText}`);
+                }
             }
 
         } catch (err: any) {

@@ -14,7 +14,7 @@ Think of it like a toolbox, but instead of wrenches and screwdrivers, it has too
 *   **Analyze Websites:** Get insights and information from websites quickly.
 *   **Write Content:** Get help writing things like marketing copy or sales snippets.
 *   **Identify Ideal Customers:** Generate a detailed profile of your best customers to guide your marketing and sales efforts.
-*   **Manage Tasks (Kanban):** Organize your work visually using a Kanban-style board with customizable stages.
+*   **Manage Tasks (Kanban):** Organize your work visually using a Kanban-style board with customizable stages and client-side persistence to save your progress across sessions.
 *   **Plan Projects:** See the steps needed to complete projects with a roadmap tool, providing a strategic 90-day guide for AI implementation.
 *   **Calculate ROI:** Estimate the return on investment for your projects with a planned interactive calculator.
 *   **Find Resources:** Access helpful information and links related to your work.
@@ -27,11 +27,21 @@ Curious about how ready you are to leverage AI effectively? The AI Efficiency Sc
 
 ### Executive Persona Analyzer
 
-Understanding who you're communicating with is key. This tool helps you generate AI-powered insights into the personality and communication style of executives. By simply entering an executive's name and company, the AI analyzes publicly available information to create a profile.
+Understanding who you're communicating with is key. This tool helps you generate AI-powered insights into the personality and communication style of executives. By simply entering an executive's name and company, the AI analyzes publicly available information to create a comprehensive profile.
 
-The profile includes a summary, insights into their likely communication preferences, actionable tips for engaging with them effectively, and even a breakdown of their potential DISC profile (Dominance, Influence, Steadiness, Conscientiousness). You'll also get insights tailored to different business contexts like sales, meetings, and negotiations.
+The generated profile provides a summary, insights into their likely communication preferences, actionable tips for engaging effectively, a breakdown of their potential DISC profile (Dominance, Influence, Steadiness, Conscientiousness), and insights tailored to different business contexts like sales, meetings, and negotiations. You can also **save generated profiles and get a unique, shareable link** to easily share the insights with others.
 
 This tool is valuable for anyone looking to tailor their communication for better results.
+
+### Deep Research
+
+Need in-depth information on a complex topic? The Deep Research tool helps you get comprehensive answers by breaking down your query into smaller research tasks. It can:
+
+*   **Clarify your needs:** Ask you targeted questions to ensure the research focuses on what's most important to you.
+*   **Conduct multi-step research:** Perform detailed investigations based on your initial query and subsequent clarifications.
+*   **Generate a comprehensive report:** Compile the findings into a structured report with sources.
+
+Recent improvements allow for more dynamic and user-friendly interaction during the clarification phase, and the final report is now presented in a clear, organized format similar to other analysis tools.
 
 ### AI Marketing Critique
 

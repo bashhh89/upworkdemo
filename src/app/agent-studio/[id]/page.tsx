@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
+import { AgentConfiguration } from '@/types/agent';
 
 // Mock pipeline data (normally you'd fetch this)
 const mockPipelines = [
@@ -18,154 +19,69 @@ const mockPipelines = [
   { id: 'pipeline3', name: 'Product Sales Pipeline' },
 ];
 
-// Mock Agent data
-const mockAgents = [
-  {
-    id: '1',
-    name: 'Customer Support Agent',
-    systemPrompt: 'You are a helpful customer support agent. Your goal is to assist customers with their questions and concerns in a friendly and professional manner. Always provide accurate information and escalate issues when necessary.',
-    status: 'Active',
-    interactions: 153,
-    linkedPipelineId: 'pipeline1',
-    knowledgeSources: [
-      { type: 'file', name: 'product-manual.pdf' },
-      { type: 'file', name: 'faq.docx' }
-    ],
-    createCards: true,
-    initialMessages: [
-      'Hello! How can I help you today?',
-      'Welcome to our support chat! What can I assist you with?'
-    ],
-    suggestedReplies: [
-      'I need help with my account',
-      'How do I reset my password?',
-      'What are your business hours?'
-    ],
-    primaryColor: '#4A90E2'
-  },
-  {
-    id: '2',
-    name: 'Lead Qualification Bot',
-    systemPrompt: 'You are a lead qualification specialist. Your goal is to assess potential customers, understand their needs, and determine if our solutions are a good fit for them. Ask relevant questions to qualify leads effectively.',
-    status: 'Active',
-    interactions: 89,
-    linkedPipelineId: 'pipeline2',
-    knowledgeSources: [
-      { type: 'url', name: 'https://example.com/products' },
-      { type: 'text', name: 'Custom product information' }
-    ],
-    createCards: true,
-    initialMessages: [
-      'Thanks for your interest in our solutions! I\'d like to learn more about your needs.',
-      'Welcome! I\'m here to help find the right solution for you. What challenges are you looking to solve?'
-    ],
-    suggestedReplies: [
-      'Tell me more about your pricing',
-      'What industries do you serve?',
-      'Can you show me a demo?'
-    ],
-    primaryColor: '#50B83C'
-  },
-  {
-    id: '3',
-    name: 'FAQ Assistant',
-    systemPrompt: 'You are an FAQ assistant. Your goal is to provide concise and accurate answers to frequently asked questions about our products and services. When you don\'t know an answer, suggest contacting support.',
-    status: 'Inactive',
-    interactions: 42,
-    linkedPipelineId: '',
-    knowledgeSources: [
-      { type: 'text', name: 'FAQ knowledge base' }
-    ],
-    createCards: false,
-    initialMessages: [
-      'Hello! I can answer frequently asked questions about our products and services. What would you like to know?'
-    ],
-    suggestedReplies: [
-      'What is your return policy?',
-      'How do I contact support?',
-      'What payment methods do you accept?'
-    ],
-    primaryColor: '#F49342'
-  },
-  {
-    id: '4',
-    name: 'Product Recommendation Agent',
-    systemPrompt: 'You are a product recommendation assistant. Your goal is to understand customer preferences and suggest the most suitable products from our catalog. Always provide personalized recommendations.',
-    status: 'Training',
-    interactions: 0,
-    linkedPipelineId: 'pipeline3',
-    knowledgeSources: [
-      { type: 'file', name: 'product-catalog.xlsx' }
-    ],
-    createCards: true,
-    initialMessages: [
-      'Hello! I can help you find the perfect product for your needs. What are you looking for today?'
-    ],
-    suggestedReplies: [
-      'I need something for my home office',
-      'I\'m looking for a gift',
-      'What\'s your most popular product?'
-    ],
-    primaryColor: '#9C6ADE'
-  }
-];
-
 export default function AgentDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
   const agentId = params.id as string;
   
-  // State for agent data
-  const [agent, setAgent] = useState<any>(null);
+  // State for agent data, loading, saving, deleting, and error
+  const [agent, setAgent] = useState<AgentConfiguration | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  // Fetch agent data
+  // Fetch agent data from API
   useEffect(() => {
-    // Simulate API call to fetch agent data
-    const fetchAgent = () => {
+    if (!agentId) return;
+
+    const fetchAgentData = async () => {
       setIsLoading(true);
-      
-      // Try to get agent from localStorage first (for newly created agents)
+      setError(null);
+      console.log(`Fetching data for agent ID: ${agentId}`);
+
       try {
-        const storedAgents = localStorage.getItem('mockAgents');
-        if (storedAgents) {
-          const parsedAgents = JSON.parse(storedAgents);
-          const storedAgent = parsedAgents.find((a: any) => a.id === agentId);
-          
-          if (storedAgent) {
-            // Convert dates and adjust any data formatting needed
-            storedAgent.createdAt = new Date(storedAgent.createdAt);
-            setAgent(storedAgent);
-            setIsLoading(false);
-            return;
-          }
+        const response = await fetch(`/api/agent-studio/${agentId}`);
+
+        if (response.status === 404) {
+          console.log("Agent not found (404).");
+          setError('Agent not found.');
+          toast({
+            title: "Error",
+            description: "Agent not found.",
+            variant: "destructive",
+            duration: 5000
+          });
+          return;
         }
-      } catch (e) {
-        console.error("Error loading agent from localStorage", e);
-      }
-      
-      // If not found in localStorage, search mock data
-      const foundAgent = mockAgents.find(a => a.id === agentId);
-      
-      if (foundAgent) {
-        setAgent(foundAgent);
-      } else {
-        // Handle not found
+
+        if (!response.ok) {
+           const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response' }));
+           console.error("API Error fetching agent:", response.status, errorData);
+           throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        }
+
+        const data: AgentConfiguration = await response.json();
+        console.log("Fetched agent data:", data);
+        setAgent(data);
+
+      } catch (err) {
+        console.error("Failed to fetch agent data:", err);
+        const message = err instanceof Error ? err.message : "An unknown error occurred.";
+        setError(`Failed to load agent data: ${message}`);
         toast({
-          title: "Agent not found",
-          description: "The requested agent could not be found.",
+          title: "Error Loading Agent",
+          description: message,
           variant: "destructive",
-          duration: 3000
+          duration: 5000
         });
-        router.push('/agent-studio');
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
-    
-    fetchAgent();
+
+    fetchAgentData();
   }, [agentId, router, toast]);
   
   // Form state
@@ -179,76 +95,94 @@ export default function AgentDetailPage() {
   const [suggestedReplies, setSuggestedReplies] = useState<string[]>([]);
   const [newSuggestedReply, setNewSuggestedReply] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#4A90E2');
+  const [knowledgeSources, setKnowledgeSources] = useState<any[]>([]);
   
-  // Update form state when agent data is loaded
+  // Update form state when agent data is loaded/changed
   useEffect(() => {
     if (agent) {
       setAgentName(agent.name);
       setSystemPrompt(agent.systemPrompt);
       setStatus(agent.status);
-      setCreateCards(agent.createCards);
-      setLinkedPipelineId(agent.linkedPipelineId);
-      setInitialMessages(agent.initialMessages);
-      setSuggestedReplies(agent.suggestedReplies);
-      setPrimaryColor(agent.primaryColor);
+      setCreateCards(agent.settings?.createCards ?? false);
+      setLinkedPipelineId(agent.settings?.linkedPipelineId ?? '');
+      setInitialMessages(agent.settings?.initialMessages || []);
+      setSuggestedReplies(agent.settings?.suggestedReplies || []);
+      setPrimaryColor(agent.settings?.primaryColor || '#4A90E2');
+      setKnowledgeSources(agent.knowledgeSources || []);
+      setNewInitialMessage('');
+      setNewSuggestedReply('');
     }
   }, [agent]);
   
-  // Handle save
-  const handleSave = () => {
+  // Handle save - Now connects to the PUT API endpoint
+  const handleSave = async () => {
+    if (!agentId) return;
+
+    console.log("Attempting to save changes for agent:", agentId);
     setIsSaving(true);
-    
-    // Create updated agent data
-    const updatedAgent = {
-      ...agent,
+
+    // Construct the payload with fields that can be updated from the UI state
+    const updatePayload = {
       name: agentName,
-      systemPrompt,
-      status,
-      createCards,
-      linkedPipelineId,
-      initialMessages,
-      suggestedReplies,
-      primaryColor
-    };
-    
-    // Update agent in localStorage if it exists there
-    try {
-      const storedAgents = localStorage.getItem('mockAgents');
-      if (storedAgents) {
-        const parsedAgents = JSON.parse(storedAgents);
-        const agentIndex = parsedAgents.findIndex((a: any) => a.id === agentId);
-        
-        if (agentIndex !== -1) {
-          // Update the agent in the array
-          parsedAgents[agentIndex] = {
-            ...parsedAgents[agentIndex],
-            ...updatedAgent,
-            // Make sure createdAt remains a string in storage
-            createdAt: updatedAgent.createdAt instanceof Date 
-              ? updatedAgent.createdAt.toISOString() 
-              : updatedAgent.createdAt
-          };
-          
-          // Save the updated array back to localStorage
-          localStorage.setItem('mockAgents', JSON.stringify(parsedAgents));
-        }
+      systemPrompt: systemPrompt,
+      status: status,
+      // Send the current state of knowledge sources (backend would process updates)
+      knowledgeSources: knowledgeSources,
+      // Reconstruct the settings object from individual states
+      settings: {
+        createCards: createCards,
+        linkedPipelineId: linkedPipelineId || null, // Ensure null if empty
+        initialMessages: initialMessages,
+        suggestedReplies: suggestedReplies,
+        primaryColor: primaryColor
       }
-    } catch (e) {
-      console.error("Error updating agent in localStorage", e);
-    }
-    
-    // Simulate API call to save agent data
-    setTimeout(() => {
-      setAgent(updatedAgent);
-      setIsSaving(false);
-      
-      const { dismiss } = toast({
-        title: "Changes saved",
-        description: "Your agent has been updated successfully.",
-        duration: 3000, // Auto-dismiss after 3 seconds
-        action: <Button onClick={() => dismiss()} className="bg-transparent hover:bg-white/10">Dismiss</Button>
+    };
+
+    console.log("Update Payload:", updatePayload);
+
+    try {
+      const response = await fetch(`/api/agent-studio/${agentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatePayload),
       });
-    }, 1000);
+
+      if (!response.ok) {
+        // Handle non-successful responses
+        const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response' }));
+        console.error("API Error updating agent:", response.status, errorData);
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      // Handle successful update
+      const updatedAgentData: AgentConfiguration = await response.json();
+      console.log("API Update Success:", updatedAgentData);
+
+      // Update the main agent state with the response from the API
+      setAgent(updatedAgentData);
+
+      toast({
+        title: "Changes Saved",
+        description: "Your agent configuration has been updated successfully.",
+        duration: 3000,
+        action: <Button onClick={() => toast({ title: "", description: "" })} className="bg-transparent hover:bg-white/10">Dismiss</Button>
+      });
+
+    } catch (error) {
+      console.error("Failed to save agent changes:", error);
+      const message = error instanceof Error ? error.message : "An unknown error occurred.";
+      toast({
+        title: "Error Saving Changes",
+        description: message,
+        variant: "destructive",
+        duration: 5000,
+        action: <Button onClick={() => toast({ title: "", description: "" })} className="bg-transparent hover:bg-red-800/20 text-white">Dismiss</Button>
+      });
+    } finally {
+      setIsSaving(false); // End loading state
+    }
   };
   
   // Handle adding new initial message
@@ -277,12 +211,68 @@ export default function AgentDetailPage() {
     setSuggestedReplies(suggestedReplies.filter((_, i) => i !== index));
   };
   
+  // Handle Agent Deletion using API
+  const handleDeleteAgent = async () => {
+    if (!agentId) return;
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete the agent "${agentName || agentId}"? This cannot be undone.`
+    );
+
+    if (!confirmDelete) {
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const response = await fetch(`/api/agent-studio/${agentId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+         const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response' }));
+         console.error("API Error deleting agent:", response.status, errorData);
+         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      console.log(`Agent ${agentId} deleted successfully via API.`);
+      toast({
+        title: "Agent Deleted",
+        description: `Agent "${agentName || agentId}" has been deleted.`,
+        duration: 3000,
+      });
+
+      router.push('/agent-studio');
+
+    } catch (error) {
+      console.error("Failed to delete agent:", error);
+      const message = error instanceof Error ? error.message : "An unknown error occurred.";
+      toast({
+        title: "Error Deleting Agent",
+        description: message,
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+  
   if (isLoading) {
     return (
       <div className="container mx-auto py-8 text-white text-center">
         <div className="animate-pulse">Loading agent details...</div>
       </div>
     );
+  }
+  
+  if (error) {
+     return <div className="flex items-center justify-center h-screen bg-black text-white"><p className="text-red-500">Error: {error}</p></div>;
+  }
+  
+  if (!agent) {
+    return <div className="flex items-center justify-center h-screen bg-black text-white"><p>Agent data not available.</p></div>;
   }
   
   return (
@@ -313,6 +303,9 @@ export default function AgentDetailPage() {
             className="border-[#333333] text-white hover:bg-[#333333] rounded-none"
           >
             Back to List
+          </Button>
+          <Button variant="destructive" onClick={handleDeleteAgent} disabled={isDeleting || isLoading}>
+            {isDeleting ? 'Deleting...' : 'Delete Agent'}
           </Button>
         </div>
       </div>
@@ -553,7 +546,7 @@ export default function AgentDetailPage() {
             <h2 className="text-xl font-semibold">Knowledge Sources</h2>
             
             <div className="space-y-4">
-              {agent.knowledgeSources.map((source: any, index: number) => (
+              {knowledgeSources.map((source: any, index: number) => (
                 <div key={index} className="flex items-center justify-between bg-[#1a1a1a] p-4 border border-[#333333]">
                   <div className="flex items-center gap-3">
                     <span className="text-xs uppercase bg-[#333333] px-2 py-1">{source.type}</span>
@@ -568,9 +561,9 @@ export default function AgentDetailPage() {
                       className="border-[#333333] text-white hover:bg-[#333333]"
                       onClick={() => {
                         // Remove knowledge source
-                        const updatedSources = [...agent.knowledgeSources];
+                        const updatedSources = [...knowledgeSources];
                         updatedSources.splice(index, 1);
-                        setAgent({...agent, knowledgeSources: updatedSources});
+                        setKnowledgeSources(updatedSources);
                       }}
                     >
                       Remove
@@ -620,10 +613,7 @@ export default function AgentDetailPage() {
                     };
                     
                     if (newSource.name && newSource.name.trim() !== '') {
-                      setAgent({
-                        ...agent, 
-                        knowledgeSources: [...agent.knowledgeSources, newSource]
-                      });
+                      setKnowledgeSources([...knowledgeSources, newSource]);
                       
                       // Clear input field
                       const inputEl = document.getElementById('source-name') as HTMLInputElement;

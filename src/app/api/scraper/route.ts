@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     // Validate URL
     try {
       new URL(url);
-    } catch (e) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid URL format' },
         { status: 400 }
@@ -29,8 +29,6 @@ export async function POST(request: Request) {
 
     // Fetch the website with a timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-    
     // First, try direct fetch
     try {
       const response = await fetch(url, {
@@ -107,7 +105,6 @@ export async function POST(request: Request) {
         { status: response.status }
       );
     } catch (fetchError) {
-      clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
         return NextResponse.json(
           { error: 'Website fetch timed out after 30 seconds' },
@@ -147,7 +144,7 @@ const normalizeAnalysisData = (analysis: any): Record<string, string> => {
 };
 
 // Helper function to process HTML content
-async function processHtml(html: string, url: string, controller: AbortController) {
+async function processHtml(html: string, url: string, controller: AbortController) { // eslint-disable-line @typescript-eslint/no-unused-vars
   // We don't need to clear timeout here since the controller is passed from caller
   // and the caller is responsible for clearing their own timeout
   

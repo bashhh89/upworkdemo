@@ -19,7 +19,7 @@ const AssistantRuntimeProvider = ({ children }: { children: React.ReactNode }) =
 };
 
 // Mock hook to replace useChatRuntime
-const useChatRuntime = (config: any) => {
+const useChatRuntime = () => {
   return {
     messages: [],
     sendMessage: (msg: string) => {
@@ -31,12 +31,7 @@ const useChatRuntime = (config: any) => {
 
 export default function PollinationsAssistantPage() {
   // Initialize the chat runtime
-  const runtime = useChatRuntime({
-    api: "/api/chat",
-    body: {
-      model: "openai" // Default model, will be overridden by selection in sidebar
-    }
-  });
+  useChatRuntime();
 
   return (
     <AssistantRuntimeProvider>

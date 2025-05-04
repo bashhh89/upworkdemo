@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface Message {
     role: 'user' | 'assistant';
@@ -776,10 +776,10 @@ export function ObjectionHandlerSection() {
                         </div>
                     </div>
                     
-                    <DialogFooter>
+                    <div className="mt-6 flex justify-end gap-3">
                         <Button variant="outline" onClick={() => setShowCustomDialog(false)}>Cancel</Button>
                         <Button onClick={handleSaveCustomPersona}>Save & Apply</Button>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

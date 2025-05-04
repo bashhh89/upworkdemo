@@ -151,54 +151,75 @@ export default function CreateAgentPage() {
   };
   
   // Create agent handler
-  const handleCreateAgent = () => {
+  const handleCreateAgent = async () => {
     setIsTraining(true);
-    
-    // Create new agent object
-    const newAgent = {
-      id: `new-${Date.now()}`, // Generate temporary ID
-      name: agentName,
-      status: 'Training',
-      systemPrompt: systemPrompt,
-      interactions: 0,
-      linkedPipelineId: createCards ? selectedPipeline : '',
-      knowledgeSources: knowledgeSource === 'files' 
-        ? files.map(file => ({ type: 'file', name: file.name }))
-        : knowledgeSource === 'url'
-          ? urls.filter(url => url.trim() !== '').map(url => ({ type: 'url', name: url }))
-          : [{ type: 'text', name: 'Custom knowledge text' }],
-      createCards: createCards,
-      initialMessages: ['Hello! How can I help you today?'],
-      suggestedReplies: [],
-      primaryColor: '#4A90E2',
-      createdAt: new Date()
-    };
-    
-    // Simulate agent creation process with timeout
-    setTimeout(() => {
-      // In a real app, we would POST this data to an API endpoint
-      // For now, we'll simulate by storing in localStorage to persist between page views
-      try {
-        // Get existing agents from localStorage or initialize empty array
-        const existingAgents = JSON.parse(localStorage.getItem('mockAgents') || '[]');
-        // Add new agent to array
-        existingAgents.push(newAgent);
-        // Save updated array back to localStorage
-        localStorage.setItem('mockAgents', JSON.stringify(existingAgents));
-      } catch (e) {
-        console.error("Error saving agent to localStorage", e);
+
+    try {
+      // Construct FormData for the API
+      const formData = new FormData();
+      formData.append('name', agentName);
+      formData.append('systemPrompt', systemPrompt);
+      formData.append('status', 'Training'); // Or derive from state if needed
+      formData.append('settings', JSON.stringify({
+        createCards: createCards,
+        linkedPipelineId: createCards ? selectedPipeline : null,
+        initialMessages: ['Hello! How can I help you today?'], // Example default
+        suggestedReplies: [], // Example default
+        primaryColor: '#4A90E2' // Example default
+      }));
+
+      // Append knowledge sources
+      if (knowledgeSource === 'files') {
+        files.forEach(file => formData.append('knowledgeFiles', file));
+      } else if (knowledgeSource === 'url') {
+        const urlSources = urls.filter(url => url.trim() !== '').map(url => ({ type: 'url', name: url }));
+        formData.append('otherKnowledgeSources', JSON.stringify(urlSources));
+      } else if (knowledgeSource === 'text') {
+        const textSources = [{ type: 'text', name: 'Custom knowledge text', content: knowledgeText }];
+        formData.append('otherKnowledgeSources', JSON.stringify(textSources));
       }
-      
+
+      console.log('Submitting Agent FormData:', formData);
+
+      const response = await fetch('/api/agent-studio', {
+        method: 'POST',
+        // Do NOT set Content-Type header; browser will set it for FormData
+        body: formData,
+      });
+
+      if (!response.ok) {
+        // Handle non-successful responses (e.g., 4xx, 5xx)
+        const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response' }));
+        console.error('API Error:', response.status, errorData);
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      // Handle successful response (e.g., 201 Created)
+      const createdAgent = await response.json();
+      console.log('API Success:', createdAgent);
+
       const { dismiss } = toast({
-        title: "Agent created successfully",
-        description: "Your new agent is ready to use!",
-        duration: 3000, // Auto-dismiss after 3 seconds
+        title: 'Agent creation started!',
+        description: 'Your new agent is being created.',
+        duration: 3000,
         action: <Button onClick={() => dismiss()} className="bg-transparent hover:bg-white/10">Dismiss</Button>
       });
-      
-      // Navigate back to agent studio
-      router.push('/agent-studio');
-    }, 3000);
+
+      // Redirect to the new agent's detail page
+      router.push(`/agent-studio/${createdAgent.id}`);
+
+    } catch (error) {
+      console.error('Failed to create agent:', error);
+      const { dismiss } = toast({
+        title: 'Error Creating Agent',
+        description: error instanceof Error ? error.message : 'An unknown error occurred.',
+        variant: 'destructive',
+        duration: 5000,
+        action: <Button onClick={() => dismiss()} className="bg-transparent hover:bg-red-800/20 text-white">Dismiss</Button>
+      });
+    } finally {
+      setIsTraining(false); // End loading state regardless of outcome
+    }
   };
   
   return (

@@ -247,28 +247,28 @@ export default function EnhancedThread() {
     // For assistant messages with tool results
     if (message.role === 'assistant' && message.toolResult) {
       return (
-        <div key={message.id} className="mb-4">
-          <div className="text-green-400">
-            <span className="font-bold">Assistant:</span>
+        <div key={message.id} className="flex justify-start mb-4">
+          <div className="bg-zinc-850 text-zinc-100 p-3 rounded-lg max-w-[75%]">
+            <div className="font-bold mb-1 text-green-400">Assistant:</div>
+            <ToolResultSummary
+              result={message.toolResult}
+              onAskAbout={handleAskAboutTool}
+            />
           </div>
-          <ToolResultSummary 
-            result={message.toolResult} 
-            onAskAbout={handleAskAboutTool}
-          />
         </div>
       );
     }
 
     // Default rendering for other messages
     return (
-      <div key={message.id} className="mb-4">
-        <div className={message.role === 'user' ? 'text-blue-400' : 'text-green-400'}>
-          <span className="font-bold">{message.role === 'user' ? 'You' : 'Assistant'}:</span>
-        </div>
-        <div className="mt-1 prose prose-invert max-w-none">
-          <ReactMarkdown>
-            {message.content}
-          </ReactMarkdown>
+      <div key={message.id} className={message.role === 'user' ? 'flex justify-end mb-4' : 'flex justify-start mb-4'}>
+        <div className={message.role === 'user' ? 'bg-zinc-800 text-white p-3 rounded-lg max-w-[75%]' : 'bg-zinc-850 text-zinc-100 p-3 rounded-lg max-w-[75%]'} >
+          <div className={message.role === 'user' ? 'font-bold mb-1 text-blue-400' : 'font-bold mb-1 text-green-400'}>{message.role === 'user' ? 'You' : 'Assistant'}:</div>
+          <div className="prose prose-invert max-w-none">
+            <ReactMarkdown>
+              {message.content}
+            </ReactMarkdown>
+          </div>
         </div>
       </div>
     );
@@ -415,4 +415,4 @@ export default function EnhancedThread() {
       </div>
     </div>
   );
-} 
+}

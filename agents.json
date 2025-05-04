@@ -1,0 +1,28 @@
+[
+  {
+    "id": "agent_ae5b8608",
+    "userId": "user_placeholder_new",
+    "name": "test",
+    "systemPrompt": "You are a helpful customer support agent. Your goal is to assist customers with their questions and concerns in a friendly and professional manner. Always provide accurate information and escalate issues when necessary.",
+    "knowledgeSources": [
+      {
+        "type": "file",
+        "name": "KB_ Gemeni-Ahmad Collaboration Persona.pdf",
+        "status": "ready",
+        "path": "E:\\deliver\\uploads\\51db0407-9718-43cb-96aa-6cad150eec42-KB_ Gemeni-Ahmad Collaboration Persona.pdf"
+      }
+    ],
+    "settings": {
+      "createCards": false,
+      "linkedPipelineId": null,
+      "initialMessages": [
+        "Hello! How can I help you today?"
+      ],
+      "suggestedReplies": [],
+      "primaryColor": "#4A90E2"
+    },
+    "status": "Training",
+    "createdAt": "2025-05-03T10:34:17.072Z",
+    "updatedAt": "2025-05-03T10:34:39.533Z"
+  }
+]

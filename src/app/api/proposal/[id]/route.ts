@@ -16,7 +16,7 @@ export async function GET(
     // Check if file exists
     try {
       await fs.access(PROPOSALS_FILE);
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Proposals file not found' }, { status: 404 });
     }
     
@@ -26,7 +26,7 @@ export async function GET(
     
     try {
       proposals = JSON.parse(fileContent);
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Invalid proposals data format' }, { status: 500 });
     }
     
