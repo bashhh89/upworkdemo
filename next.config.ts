@@ -5,6 +5,11 @@ const nextConfig: NextConfig = {
   // This allows us to export static files but still use API routes
   output: process.env.NETLIFY ? "export" : undefined,
   
+  // EasyPanel compatibility
+  experimental: {
+    outputFileTracingRoot: process.cwd(),
+  },
+  
   // Disable ESLint during build to prevent build failures
   eslint: {
     // Only run ESLint during development, not during builds

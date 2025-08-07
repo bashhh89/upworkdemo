@@ -7,7 +7,7 @@
     "build": "next build",
     "build:netlify": "next build && cp -r .next/server/pages/api netlify/functions/ && echo '/* /index.html 200' > public/_redirects",
     "build:static": "node build-static.js",
-    "start": "next start",
+    "start": "next start -p 3003",
     "lint": "next lint"
   },
   "dependencies": {
