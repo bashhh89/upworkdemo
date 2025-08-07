@@ -16,7 +16,7 @@ export interface ToolDefinition {
   requiredParameters: {
     name: string;
     label: string;
-    type: 'text' | 'url' | 'number' | 'select';
+    type: 'text' | 'url' | 'number' | 'select' | 'textarea';
     placeholder?: string;
     options?: string[];
     required?: boolean;

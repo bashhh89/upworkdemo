@@ -11,7 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Globe, Users, Target, Send } from 'lucide-react';
 import ExecutivePersonaForm from '@/components/ExecutivePersonaForm';
 import WebsiteScannerForm from '@/components/WebsiteScannerForm';
-import DealWriterForm from '@/components/DealWriterForm';
 import ToolResultSummary from '@/components/ToolResultSummary';
 
 export default function ToolsTestPage() {
@@ -90,17 +89,6 @@ export default function ToolsTestPage() {
             onCancel={() => setSelectedTool(null)}
           />
         );
-      case 'Contextual Deal Writer':
-        return (
-          <DealWriterForm
-            initialParameters={parameters}
-            onSubmit={(params) => {
-              setParameters(params);
-              handleSubmit(new Event('submit') as any);
-            }}
-            onCancel={() => setSelectedTool(null)}
-          />
-        );
       default:
         return (
           <Card className="w-full max-w-md mx-auto">
@@ -168,8 +156,6 @@ export default function ToolsTestPage() {
         return <Globe className="h-5 w-5" />;
       case 'Executive Persona':
         return <Users className="h-5 w-5" />;
-      case 'Contextual Deal Writer':
-        return <Target className="h-5 w-5" />;
       default:
         return null;
     }
@@ -237,4 +223,4 @@ export default function ToolsTestPage() {
       )}
     </div>
   );
-} 
+}

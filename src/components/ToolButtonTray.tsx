@@ -21,7 +21,7 @@ export default function ToolButtonTray({ onSelectTool }: ToolButtonTrayProps) {
         return <Globe className="h-4 w-4 text-blue-400 group-hover:text-blue-300" />;
       case 'Executive Persona':
         return <Users className="h-4 w-4 text-purple-400 group-hover:text-purple-300" />;
-      case 'Contextual Deal Writer':
+      case 'ICP Builder':
         return <Target className="h-4 w-4 text-green-400 group-hover:text-green-300" />;
       default:
         return <Wrench className="h-4 w-4 text-gray-400 group-hover:text-gray-300" />;
@@ -31,7 +31,7 @@ export default function ToolButtonTray({ onSelectTool }: ToolButtonTrayProps) {
   const getToolColor = (toolName: string): string => {
     if (toolName.includes('Website')) return 'border-blue-800 hover:border-blue-600 hover:bg-blue-950/30';
     if (toolName.includes('Executive')) return 'border-purple-800 hover:border-purple-600 hover:bg-purple-950/30';
-    if (toolName.includes('Deal')) return 'border-green-800 hover:border-green-600 hover:bg-green-950/30';
+    if (toolName.includes('ICP')) return 'border-green-800 hover:border-green-600 hover:bg-green-950/30';
     return 'border-gray-700 hover:border-gray-600 hover:bg-gray-950/30';
   };
 
@@ -59,4 +59,4 @@ export default function ToolButtonTray({ onSelectTool }: ToolButtonTrayProps) {
       </TooltipProvider>
     </div>
   );
-} 
+}

@@ -7,7 +7,6 @@ import SlashCommandMenu from './SlashCommandMenu';
 import ToolButtonTray from './ToolButtonTray';
 import ExecutivePersonaForm from './ExecutivePersonaForm';
 import WebsiteScannerForm from './WebsiteScannerForm';
-import DealWriterForm from './DealWriterForm';
 import { ToolDefinition, ToolResult } from '@/types/tools';
 import { saveToolResult, createToolResult, detectToolRequest, extractParametersFromMessage } from '@/lib/tool-utils';
 import ReactMarkdown from 'react-markdown';
@@ -290,14 +289,6 @@ export default function EnhancedThread() {
       case 'Website Intelligence Scanner':
         return (
           <WebsiteScannerForm
-            initialParameters={pendingParams}
-            onSubmit={handleToolSubmit}
-            onCancel={handleToolCancel}
-          />
-        );
-      case 'Contextual Deal Writer':
-        return (
-          <DealWriterForm
             initialParameters={pendingParams}
             onSubmit={handleToolSubmit}
             onCancel={handleToolCancel}

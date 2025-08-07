@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 
-// List of common CORS proxies
+// Serper API configuration
+const SERPER_API_KEY = 'c6fa01a9e3f82dea3113ac50dcb3fea0e34617c4';
+const SERPER_URL = 'https://google.serper.dev/search';
+
+// List of common CORS proxies (fallback)
 const CORS_PROXIES = [
   'https://corsproxy.io/?',
   'https://api.allorigins.win/raw?url='
@@ -18,8 +22,9 @@ export async function POST(request: Request) {
     }
 
     // Validate URL
+    let parsedUrl;
     try {
-      new URL(url);
+      parsedUrl = new URL(url);
     } catch {
       return NextResponse.json(
         { error: 'Invalid URL format' },
@@ -27,8 +32,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Extract domain for search
+    const domain = parsedUrl.hostname.replace('www.', '');
+    const companyName = domain.split('.')[0];
+
     // Fetch the website with a timeout
     const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
     // First, try direct fetch
     try {
       const response = await fetch(url, {
@@ -51,8 +62,9 @@ export async function POST(request: Request) {
       
       // If the direct fetch works, proceed with it
       if (response.ok) {
+        clearTimeout(timeoutId);
         const html = await response.text();
-        return processHtml(html, url, controller);
+        return processHtml(html, url);
       }
       
       // If we got a 403/401 error, try using proxies
@@ -73,8 +85,9 @@ export async function POST(request: Request) {
             });
             
             if (proxyResponse.ok) {
+              clearTimeout(timeoutId);
               const html = await proxyResponse.text();
-              return processHtml(html, url, controller);
+              return processHtml(html, url);
             }
           } catch (proxyError) {
             console.error(`Proxy error with ${proxy}:`, proxyError);
@@ -105,6 +118,7 @@ export async function POST(request: Request) {
         { status: response.status }
       );
     } catch (fetchError) {
+      clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
         return NextResponse.json(
           { error: 'Website fetch timed out after 30 seconds' },
@@ -115,44 +129,209 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error('Website scraper error:', error);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Failed to analyze website';
+    let statusCode = 500;
+    
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      errorMessage = 'Network error: Unable to connect to the website';
+      statusCode = 503;
+    } else if (error instanceof Error && error.name === 'AbortError') {
+      errorMessage = 'Request timed out after 30 seconds';
+      statusCode = 408;
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to analyze website', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
+      { 
+        error: errorMessage, 
+        details: error instanceof Error ? error.message : String(error) 
+      },
+      { status: statusCode }
     );
   }
 }
 
-// Helper function to ensure consistent analysis format
-const normalizeAnalysisData = (analysis: any): Record<string, string> => {
-  if (!analysis) return {};
+// Create analysis from real Serper data and website content
+function createAnalysisFromData(title: string, description: string, serperData: any, html: string) {
+  const analysis: Record<string, string> = {};
   
-  const normalized: Record<string, string> = {};
+  // Extract company name from title
+  const companyName = title.split(' - ')[0].split(' | ')[0].trim();
   
-  // Ensure all analysis fields are strings
-  Object.entries(analysis).forEach(([key, value]) => {
-    if (typeof value === 'string') {
-      normalized[key] = value;
-    } else if (typeof value === 'object' && value !== null) {
-      // Convert nested objects to formatted strings
-      normalized[key] = JSON.stringify(value, null, 2);
-    } else {
-      normalized[key] = String(value || 'No information available');
-    }
+  // 1. Company Name & Brand Identity
+  analysis['Company Name & Brand Identity'] = serperData?.knowledgeGraph?.title || companyName || 'Company name extracted from website title';
+  
+  // 2. Products/Services Offered
+  const services = [];
+  if (serperData?.knowledgeGraph?.description) {
+    services.push(serperData.knowledgeGraph.description);
+  }
+  if (description && description !== 'No description found') {
+    services.push(description);
+  }
+  // Extract services from organic results
+  serperData?.organic?.slice(0, 3).forEach((result: any) => {
+    if (result.snippet) services.push(result.snippet);
   });
+  analysis['Products/Services Offered'] = services.length > 0 ? services.join('. ') : 'Information not available from current sources';
   
-  return normalized;
-};
+  // 3. Target Audience/Market
+  const marketInfo = [];
+  if (serperData?.knowledgeGraph?.type) {
+    marketInfo.push(`Industry: ${serperData.knowledgeGraph.type}`);
+  }
+  analysis['Target Audience/Market'] = marketInfo.length > 0 ? marketInfo.join('. ') : 'Market information not available from current sources';
+  
+  // 4. Company Mission/Values/About
+  analysis['Company Mission/Values/About'] = serperData?.knowledgeGraph?.description || description || 'Mission and values information not available from current sources';
+  
+  // 5. Team Members & Structure
+  analysis['Team Members & Structure'] = 'Team information not available from current sources';
+  
+  // 6. Technologies Used
+  const techStack = [];
+  if (html.includes('react')) techStack.push('React');
+  if (html.includes('angular')) techStack.push('Angular');
+  if (html.includes('vue')) techStack.push('Vue.js');
+  if (html.includes('wordpress')) techStack.push('WordPress');
+  if (html.includes('shopify')) techStack.push('Shopify');
+  analysis['Technologies Used'] = techStack.length > 0 ? techStack.join(', ') : 'Technology stack not identifiable from current sources';
+  
+  // 7. Content Strategy Analysis
+  analysis['Content Strategy Analysis'] = 'Content strategy analysis requires deeper website crawling not available from current sources';
+  
+  // 8. Marketing Approach
+  analysis['Marketing Approach'] = 'Marketing approach analysis not available from current sources';
+  
+  // 9. Unique Value Propositions
+  analysis['Unique Value Propositions'] = serperData?.knowledgeGraph?.description || 'Value propositions not clearly identifiable from current sources';
+  
+  // 10. Competitive Positioning
+  analysis['Competitive Positioning'] = 'Competitive analysis not available from current sources';
+  
+  // 11. Contact Information & Locations
+  const contactInfo = [];
+  if (serperData?.knowledgeGraph?.address) {
+    contactInfo.push(`Address: ${serperData.knowledgeGraph.address}`);
+  }
+  if (serperData?.knowledgeGraph?.phone) {
+    contactInfo.push(`Phone: ${serperData.knowledgeGraph.phone}`);
+  }
+  analysis['Contact Information & Locations'] = contactInfo.length > 0 ? contactInfo.join(', ') : 'Contact information not available from current sources';
+  
+  // 12. Social Media Presence
+  analysis['Social Media Presence'] = 'Social media analysis not available from current sources';
+  
+  // 13. Blog/Content Topics
+  analysis['Blog/Content Topics'] = 'Blog content analysis not available from current sources';
+  
+  // 14. SEO Analysis
+  analysis['SEO Analysis'] = `Title: ${title}, Description: ${description}`;
+  
+  // 15. Customer Testimonials/Case Studies
+  analysis['Customer Testimonials/Case Studies'] = 'Testimonials and case studies not available from current sources';
+  
+  // 16. Market Position & Industry Context
+  const marketContext = [];
+  if (serperData?.organic?.length > 0) {
+    marketContext.push(`Found ${serperData.organic.length} related search results`);
+  }
+  if (serperData?.relatedSearches?.length > 0) {
+    marketContext.push(`Related searches: ${serperData.relatedSearches.slice(0, 3).map((s: any) => s.query).join(', ')}`);
+  }
+  analysis['Market Position & Industry Context'] = marketContext.length > 0 ? marketContext.join('. ') : 'Market context not available from current sources';
+  
+  // 17. Recent News & Public Perception
+  const newsInfo = [];
+  if (serperData?.news?.length > 0) {
+    newsInfo.push(`Recent news coverage: ${serperData.news.length} articles found`);
+    serperData.news.slice(0, 2).forEach((news: any) => {
+      if (news.title) newsInfo.push(`- ${news.title}`);
+    });
+  }
+  analysis['Recent News & Public Perception'] = newsInfo.length > 0 ? newsInfo.join('. ') : 'No recent news coverage found';
+  
+  // 18. Search Visibility & Online Presence
+  const searchInfo = [];
+  if (serperData?.organic?.length > 0) {
+    searchInfo.push(`Search visibility: ${serperData.organic.length} organic results found`);
+  }
+  if (serperData?.knowledgeGraph) {
+    searchInfo.push('Knowledge graph presence detected');
+  }
+  analysis['Search Visibility & Online Presence'] = searchInfo.length > 0 ? searchInfo.join('. ') : 'Limited search visibility data available';
+  
+  return analysis;
+}
+
+// Serper API integration
+async function getSerperData(url: string, title: string) {
+  try {
+    const domain = new URL(url).hostname.replace('www.', '');
+    const companyName = title.split(' - ')[0].split(' | ')[0].trim();
+    
+    // Search for company information using Serper
+    const companySearchData = {
+      q: `"${companyName}" company business site:${domain}`
+    };
+
+    const companyResponse = await fetch(SERPER_URL, {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': SERPER_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(companySearchData)
+    });
+
+    let companyData = null;
+    if (companyResponse.ok) {
+      companyData = await companyResponse.json();
+    }
+    
+    // Get news about the company using Serper
+    const newsSearchData = {
+      q: `"${companyName}" news`
+    };
+
+    const newsResponse = await fetch('https://google.serper.dev/news', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': SERPER_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(newsSearchData)
+    });
+
+    let newsData = null;
+    if (newsResponse.ok) {
+      newsData = await newsResponse.json();
+    }
+    
+    return {
+      organic: companyData?.organic || [],
+      knowledgeGraph: companyData?.knowledgeGraph || null,
+      news: newsData?.news || [],
+      relatedSearches: companyData?.relatedSearches || []
+    };
+  } catch (error) {
+    console.error('Serper API error:', error);
+    return null;
+  }
+}
 
 // Helper function to process HTML content
-async function processHtml(html: string, url: string, controller: AbortController) { // eslint-disable-line @typescript-eslint/no-unused-vars
-  // We don't need to clear timeout here since the controller is passed from caller
-  // and the caller is responsible for clearing their own timeout
+async function processHtml(html: string, url: string) {
   
   // Basic metadata extraction from HTML
   const title = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || 'No title found';
   const description = html.match(/<meta[^>]*name="description"[^>]*content="([^"]*)"[^>]*>/i)?.[1] || 
                     html.match(/<meta[^>]*content="([^"]*)"[^>]*name="description"[^>]*>/i)?.[1] || 
                     'No description found';
+  
+  // Get Serper data for enhanced analysis
+  const serperData = await getSerperData(url, title);
   
   // Extract links
   const links = [];
@@ -226,6 +405,24 @@ async function processHtml(html: string, url: string, controller: AbortControlle
       Title: ${title}
       Description: ${description}
       
+      ${serperData ? `
+      ADDITIONAL SERPER RESEARCH DATA:
+      
+      Knowledge Graph: ${serperData.knowledgeGraph ? JSON.stringify(serperData.knowledgeGraph, null, 2) : 'Not available'}
+      
+      Recent News: ${serperData.news.length > 0 ? 
+        serperData.news.slice(0, 5).map(news => `- ${news.title}: ${news.snippet || news.link}`).join('\n') : 
+        'No recent news found'}
+      
+      Related Search Terms: ${serperData.relatedSearches.length > 0 ? 
+        serperData.relatedSearches.map(search => search.query).join(', ') : 
+        'None found'}
+      
+      Top Search Results: ${serperData.organic.length > 0 ? 
+        serperData.organic.slice(0, 3).map(result => `- ${result.title}: ${result.snippet}`).join('\n') : 
+        'None found'}
+      ` : ''}
+      
       Provide a comprehensive business intelligence analysis of this company or organization with the following structure:
       1. Company Name & Brand Identity
       2. Products/Services Offered (with detailed descriptions)
@@ -242,48 +439,20 @@ async function processHtml(html: string, url: string, controller: AbortControlle
       13. Blog/Content Topics (general themes if present)
       14. SEO Analysis (keywords focus, meta descriptions)
       15. Customer Testimonials/Case Studies
+      16. Market Position & Industry Context (use SerpAPI data)
+      17. Recent News & Public Perception (use SerpAPI news data)
+      18. Search Visibility & Online Presence (use SerpAPI search data)
 
-      Format the response as a JSON object with these categories as keys. For each section, provide detailed insights rather than just extracted text. If information for a specific category is not available, include a note explaining this rather than leaving it blank.`;
+      Based on the website content and Serper research data, provide a comprehensive business intelligence analysis. Focus on factual information extracted from the sources rather than speculation.`;
 
-      // Use Pollinations API with searchgpt model
-      const pollinationsResponse = await fetch('https://text.pollinations.ai/openai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: "searchgpt",
-          messages: [
-            {
-              role: 'user',
-              content: analysisPrompt
-            }
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.3
-        })
-      });
-
-      if (pollinationsResponse.ok) {
-        const pollinationsData = await pollinationsResponse.json();
-        if (pollinationsData.choices && 
-            pollinationsData.choices[0] && 
-            pollinationsData.choices[0].message && 
-            pollinationsData.choices[0].message.content) {
-          try {
-            const parsedAnalysis = JSON.parse(pollinationsData.choices[0].message.content);
-            // Normalize the analysis data to ensure consistent format
-            analysis = normalizeAnalysisData(parsedAnalysis);
-          } catch (parseError) {
-            console.error('Error parsing Pollinations analysis JSON:', parseError);
-            // Return without analysis rather than failing completely
-          }
-        }
-      } else {
-        const errorText = await pollinationsResponse.text();
-        console.error('Pollinations API error:', errorText);
-      }
+      // Create analysis directly from Serper data and website content
+      analysis = createAnalysisFromData(title, description, serperData, html);
     } catch (aiError) {
       console.error('Analysis error:', aiError);
       // Continue without analysis rather than failing completely
+      if (aiError.name === 'AbortError') {
+        console.log('AI analysis timed out, continuing without analysis');
+      }
     }
   }
 
@@ -294,6 +463,7 @@ async function processHtml(html: string, url: string, controller: AbortControlle
     links: links.slice(0, 25), // Limit to 25 links to avoid overwhelming response
     images: images.slice(0, 15), // Limit to 15 images
     analysis,
+    serperData, // Include Serper data
     scrapedAt: new Date().toISOString(),
     proxyUsed: true
   });

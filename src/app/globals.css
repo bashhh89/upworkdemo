@@ -159,14 +159,15 @@ button, input, textarea, select {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background-color: #000000 !important;
   }
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
@@ -344,8 +345,18 @@ button, input, textarea, select {
 
 /* Override default white background */
 body {
-  background-color: #000000;
-  color: white;
+  background-color: #000000 !important;
+  color: white !important;
+}
+
+/* Force black background for main containers */
+html {
+  background-color: #000000 !important;
+}
+
+/* Override any conflicting background colors */
+#__next, [data-nextjs-scroll-focus-boundary] {
+  background-color: #000000 !important;
 }
 
 /* Prose (Markdown) styles for chat */

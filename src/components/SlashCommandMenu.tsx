@@ -13,7 +13,6 @@ interface SlashCommandMenuProps {
 const toolIcons: Record<string, LucideIcon> = {
   'Website Intelligence Scanner': Globe,
   'Executive Persona': Users,
-  'Contextual Deal Writer': Target,
 };
 
 export default function SlashCommandMenu({ isOpen, onSelect, onClose }: SlashCommandMenuProps) {
@@ -131,4 +130,4 @@ export default function SlashCommandMenu({ isOpen, onSelect, onClose }: SlashCom
       </div>
     </div>
   );
-} 
+}

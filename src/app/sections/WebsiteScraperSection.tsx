@@ -285,11 +285,21 @@ export function WebsiteScraperSection() {
       setWebsiteData(data);
     } catch (error) {
       console.error('Error scraping website:', error);
+      
+      let errorMessage = "Failed to analyze website";
+      let errorDetails = "Unknown error details";
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        errorMessage = "Network connection failed";
+        errorDetails = "Unable to connect to the website. Please check your internet connection and try again.";
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+        errorDetails = error.cause ? String(error.cause) : error.stack || "No additional details available";
+      }
+      
       setError({
-        message: error instanceof Error ? error.message : "Failed to analyze website",
-        details: error instanceof Error && error.cause ? error.cause : (
-          error instanceof Error ? error.stack : "Unknown error details"
-        )
+        message: errorMessage,
+        details: errorDetails
       });
     } finally {
       setIsLoading(false);

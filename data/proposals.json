@@ -411,5 +411,88 @@
       "usedFallback": true
     },
     "proposal": "# Email Proposal for Doola.com\n\nDear Ahmad Basheer is a business professional at QanDu,\n\n## Introduction\n\nI'm reaching out to discuss how our services can help address your business needs. After reviewing your company information, I believe there's a strong opportunity for us to collaborate.\n\n## Our Understanding of Your Business\n\nFrom our research, we understand that Doola.com is Website content could not be analyzed. Proceeding with limited information.. You offer General business products/services.\n\n## Our Offering\n\nsell subscrition\n\n## How We Can Help Achieve Your Goals\n\nOur primary goal is to: ai solutions\n\nBased on our understanding of your company, we believe we can provide significant value by:\n- Delivering tailored solutions that address your specific business challenges\n- Providing expertise and support throughout implementation\n- Ensuring measurable results aligned with your business objectives\n\n## Next Steps\n\nI would welcome the opportunity to discuss this proposal in more detail. Please let me know if you're available for a brief call next week to explore how we might work together.\n\nThank you for considering our proposal. I look forward to the possibility of working with Doola.com.\n\nBest regards,\n[Your Name]\n[Your Title]\n[Contact Information]\n"
+  },
+  {
+    "id": "6984cc73-9dd4-416d-b3d5-04500f3dedf9",
+    "timestamp": "2025-07-29T05:42:15.945Z",
+    "input": {
+      "companyUrl": "https://doola.com/",
+      "executiveName": "Ahmad Basheer",
+      "companyName": "QanDu.io",
+      "offeringDetails": "somehtign good with AI",
+      "format": "email",
+      "proposalGoal": "AI Task manaber"
+    },
+    "websiteAnalysis": {
+      "url": "https://doola.com/",
+      "title": "Doola.com",
+      "description": "Website content could not be analyzed. Proceeding with limited information.",
+      "analysis": {
+        "Company Name & Brand Identity": "Doola.com",
+        "Products/Services Offered": "General business products/services",
+        "Target Audience/Market": "Business professionals and organizations",
+        "Company Mission/Values/About": "Delivering value to customers through quality products/services",
+        "Unique Value Propositions": "Professional solutions tailored to customer needs",
+        "Technologies Used": "Modern business technology solutions"
+      },
+      "usedFallback": true
+    },
+    "executiveProfile": {
+      "profileSummary": "Ahmad Basheer is a business professional at QanDu.io. Limited information is available from public sources.",
+      "inferredStyle": "Professional and business-oriented communication style",
+      "communicationTips": [
+        "Focus on clear, concise communication",
+        "Emphasize the business value of your offering",
+        "Be respectful of their time",
+        "Provide relevant case studies or examples",
+        "Follow up appropriately after meetings"
+      ],
+      "preferencesAndTraits": {
+        "data_orientation": {
+          "score": 7,
+          "description": "Likely values data-backed proposals and clear metrics"
+        },
+        "relationship_focus": {
+          "score": 6,
+          "description": "Balanced approach to relationships and business outcomes"
+        },
+        "decision_speed": {
+          "score": 6,
+          "description": "Makes reasonably timely decisions with adequate information"
+        },
+        "risk_tolerance": {
+          "score": 5,
+          "description": "Moderate approach to risk, looks for balanced solutions"
+        },
+        "communication_formality": {
+          "score": 7,
+          "description": "Generally formal in business communications"
+        }
+      },
+      "discProfile": {
+        "primaryType": "Conscientiousness",
+        "secondaryType": "Dominance",
+        "description": "Likely values accuracy, quality, and expertise. May prefer detailed information and logical arguments.",
+        "strengths": [
+          "Analytical thinking",
+          "Attention to detail",
+          "Process-oriented",
+          "Problem-solving abilities",
+          "Quality focus"
+        ],
+        "challenges": [
+          "May overanalyze decisions",
+          "Could be perceived as overly critical",
+          "Might resist rapid change without sufficient data"
+        ]
+      },
+      "insightsByContext": {
+        "sales": "Present clear value propositions with supporting evidence. Avoid overpromising and focus on realistic deliverables.",
+        "presentations": "Use well-organized, data-driven presentations with clear sections and supporting evidence.",
+        "email": "Keep emails professional, concise, and well-structured with clear action items or questions."
+      },
+      "usedFallback": true
+    },
+    "proposal": "# Email Proposal for Doola.com\n\nDear Ahmad Basheer is a business professional at QanDu,\n\n## Introduction\n\nI'm reaching out to discuss how our services can help address your business needs. After reviewing your company information, I believe there's a strong opportunity for us to collaborate.\n\n## Our Understanding of Your Business\n\nFrom our research, we understand that Doola.com is Website content could not be analyzed. Proceeding with limited information.. You offer General business products/services.\n\n## Our Offering\n\nsomehtign good with AI\n\n## How We Can Help Achieve Your Goals\n\nOur primary goal is to: AI Task manaber\n\nBased on our understanding of your company, we believe we can provide significant value by:\n- Delivering tailored solutions that address your specific business challenges\n- Providing expertise and support throughout implementation\n- Ensuring measurable results aligned with your business objectives\n\n## Next Steps\n\nI would welcome the opportunity to discuss this proposal in more detail. Please let me know if you're available for a brief call next week to explore how we might work together.\n\nThank you for considering our proposal. I look forward to the possibility of working with Doola.com.\n\nBest regards,\n[Your Name]\n[Your Title]\n[Contact Information]\n"
   }
 ]

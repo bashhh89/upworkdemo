@@ -193,6 +193,24 @@ export function ScorecardSectionV3() {
     }
   };
   
+  // Handle navigation to previous question
+  const handlePrevious = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
+  };
+  
+  // Handle navigation to next question or generate report
+  const handleNext = () => {
+    if (isFinished) {
+      handleGenerateReport();
+    } else if (currentQuestionIndex === questions.length - 1) {
+      getNextQuestion();
+    } else {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    }
+  };
+  
   // Get the next question
   const getNextQuestion = async () => {
             setIsLoading(true);

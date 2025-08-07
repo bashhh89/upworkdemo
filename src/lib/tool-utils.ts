@@ -48,34 +48,20 @@ export const availableTools: ToolDefinition[] = [
     apiEndpoint: '/api/tools/executive-persona',
   },
   {
-    name: 'Contextual Deal Writer',
-    description: 'Write a personalized deal proposal based on company and industry',
-    triggerPhrases: ['write deal', 'generate proposal', 'contextual deal', 'create deal'],
+    name: 'ICP Builder',
+    description: 'Build ideal customer profiles from successful customer examples',
+    triggerPhrases: ['icp builder', 'ideal customer profile', 'customer analysis', 'build icp'],
     requiredParameters: [
       {
-        name: 'company',
-        label: 'Company Name',
-        type: 'text',
-        placeholder: 'Acme Corp',
-        required: true,
-      },
-      {
-        name: 'industry',
-        label: 'Industry',
-        type: 'select',
-        options: ['Technology', 'Healthcare', 'Finance', 'Retail', 'Manufacturing', 'Other'],
-        required: true,
-      },
-      {
-        name: 'dealSize',
-        label: 'Deal Size',
-        type: 'select',
-        options: ['Small (<$10k)', 'Medium ($10k-$50k)', 'Large ($50k-$250k)', 'Enterprise (>$250k)'],
+        name: 'customers',
+        label: 'Customer Examples',
+        type: 'textarea',
+        placeholder: 'Ahmad Basheer - Assisted.vip\nJohn Smith - TechCorp Inc\nhttps://linkedin.com/in/jane-doe',
         required: true,
       }
     ],
-    apiEndpoint: '/api/tools/contextual-deal-writer',
-  }
+    apiEndpoint: '/api/tools/icp-builder',
+  },
 ];
 
 /**
@@ -205,4 +191,4 @@ ${result.summary}
 
 [View Full Results](${shareLink})
 `;
-} 
+}

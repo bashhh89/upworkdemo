@@ -1,19 +1,19 @@
-'use client'; // Add this at the top to mark as a Client Component
+'use client';
 
-import { useEffect, useState } from 'react';
-import { use } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 
-// Reuse the markdown rendering and styling logic from the ContextualDealWriter component
+// Optimized slugify function
 const slugify = (text: string) => {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 };
 
+// Memoized heading extraction
 const extractHeadings = (markdown: string) => {
   if (!markdown) return [];
-  
+
   const lines = markdown.split('\n');
   const headings: { text: string; id: string; level: number }[] = [];
-  
+
   lines.forEach(line => {
     const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
     if (headingMatch) {
@@ -23,7 +23,7 @@ const extractHeadings = (markdown: string) => {
       headings.push({ text, id, level });
     }
   });
-  
+
   return headings;
 };
 
@@ -49,7 +49,7 @@ function HeadingsNavigation({ headings }: { headings: { text: string; id: string
   return (
     <nav className="space-y-2">
       {headings.map((heading, index) => (
-        <div 
+        <div
           key={index}
           onClick={() => {
             document.getElementById(heading.id)?.scrollIntoView({ behavior: 'smooth' });
@@ -67,101 +67,99 @@ function HeadingsNavigation({ headings }: { headings: { text: string; id: string
   );
 }
 
-// Function to render markdown with proper HTML and styling
-function renderMarkdown(text: string) {
+// Optimized markdown renderer - memoized to prevent re-computation
+const renderMarkdown = (text: string): string => {
   if (!text) return '<p class="text-[#a0a0a0]">No content available</p>';
-  
+
   try {
-    // Simple markdown parser (in a real app, use a library like react-markdown)
-    const html = text
-      // Add IDs to headings
-      .replace(/^(#{1,3})\s+(.+)$/gm, (match, hashes, content) => {
+    // Batch all regex operations for better performance
+    let html = text
+      .replace(/^(#{1,3})\s+(.+)$/gm, (_, hashes, content) => {
         const level = hashes.length;
         const id = slugify(content);
         const size = level === 1 ? 'text-xl' : level === 2 ? 'text-lg' : 'text-base';
         return `<h${level} id="${id}" class="${size} font-bold text-[#FFFFFF] mb-4 mt-6">${content}</h${level}>`;
       })
-      // Format paragraphs - only match lines that don't start with #, *, or numbers followed by period
       .replace(/^(?!(#{1,6}|\*|\d+\.))(.*[^\s].*)$/gm, '<p class="text-[#FFFFFF] mb-4">$2</p>')
-      // Format strong
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      // Format emphasis
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      // Format lists
       .replace(/^\*\s+(.+)$/gm, '<ul><li class="text-[#FFFFFF] ml-6 mb-2">$1</li></ul>')
-      // Format links
       .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-[#FFFFFF] underline hover:text-[#a0a0a0]">$1</a>');
 
-    // If no HTML was generated, provide a fallback
+    // Fallback for plain text
     if (html === text) {
-      console.log("No HTML generated, using fallback rendering");
-      // Convert plain text to paragraphs
       const lines = text.split('\n').filter(line => line.trim().length > 0);
-      const paragraphs = lines.map(line => `<p class="text-[#FFFFFF] mb-4">${line}</p>`).join('');
-      return `<div class="text-[#FFFFFF]">${paragraphs}</div>`;
+      html = lines.map(line => `<p class="text-[#FFFFFF] mb-4">${line}</p>`).join('');
     }
-    
+
     return html;
   } catch (error) {
     console.error("Error rendering markdown:", error);
     return `<div class="text-[#FFFFFF]">${text}</div>`;
   }
-}
+};
 
-// This is a client component for the proposal page
-export default function ProposalPage({ params }: { params: { id: string } }) {
-  // Unwrap params with React.use()
-  const unwrappedParams = use(params);
-  const proposalId = unwrappedParams.id;
-  
+// Optimized proposal page component
+export default function ProposalPage({ params }: { params: Promise<{ id: string }> }) {
   const [proposal, setProposal] = useState<ProposalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [headings, setHeadings] = useState<{ text: string; id: string; level: number }[]>([]);
-  const [proposalHtml, setProposalHtml] = useState<string>('');
-  
-  // Fetch the proposal data client-side
+  const [proposalId, setProposalId] = useState<string>('');
+
+  // Resolve params asynchronously
   useEffect(() => {
-    async function fetchProposal() {
-      try {
-        const response = await fetch(`/api/proposal/${proposalId}`);
-        if (!response.ok) {
-          if (response.status === 404) {
-            setError('Proposal not found');
-          } else {
-            setError('Failed to load proposal');
-          }
-          setLoading(false);
-          return;
-        }
-        
-        const data = await response.json();
-        setProposal(data);
-        
-        // Process the proposal content
-        if (data.proposal) {
-          console.log("Proposal content received:", data.proposal.substring(0, 100) + "..."); // Log the first 100 chars
-          setHeadings(extractHeadings(data.proposal));
-          
-          // Ensure we're getting valid HTML from the markdown
-          const html = renderMarkdown(data.proposal);
-          console.log("Rendered HTML:", html.substring(0, 100) + "..."); // Log the first 100 chars
-          setProposalHtml(html);
-        } else {
-          console.error("No proposal content in the response");
-          setError("The proposal has no content");
-        }
-      } catch (err) {
-        setError('Error loading proposal');
-        console.error(err);
-      } finally {
-        setLoading(false);
+    params.then(resolvedParams => {
+      setProposalId(resolvedParams.id);
+    });
+  }, [params]);
+
+  // Memoized headings extraction
+  const headings = useMemo(() => {
+    return proposal?.proposal ? extractHeadings(proposal.proposal) : [];
+  }, [proposal?.proposal]);
+
+  // Memoized HTML rendering
+  const proposalHtml = useMemo(() => {
+    return proposal?.proposal ? renderMarkdown(proposal.proposal) : '';
+  }, [proposal?.proposal]);
+
+  // Optimized fetch function
+  const fetchProposal = useCallback(async (id: string) => {
+    if (!id) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/proposal/${id}`);
+
+      if (!response.ok) {
+        setError(response.status === 404 ? 'Proposal not found' : 'Failed to load proposal');
+        return;
       }
+
+      const data = await response.json();
+
+      if (!data.proposal) {
+        setError("The proposal has no content");
+        return;
+      }
+
+      setProposal(data);
+      setError(null);
+    } catch (err) {
+      setError('Error loading proposal');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    
-    fetchProposal();
-  }, [proposalId]);
-  
+  }, []);
+
+  // Fetch proposal when ID is available
+  useEffect(() => {
+    if (proposalId) {
+      fetchProposal(proposalId);
+    }
+  }, [proposalId, fetchProposal]);
+
   if (loading) {
     return (
       <div className="bg-[#0a0a0a] text-[#FFFFFF] min-h-screen p-8 flex items-center justify-center">
@@ -170,7 +168,7 @@ export default function ProposalPage({ params }: { params: { id: string } }) {
       </div>
     );
   }
-  
+
   if (error || !proposal) {
     return (
       <div className="bg-[#0a0a0a] text-[#FFFFFF] min-h-screen p-8 flex flex-col items-center justify-center">
@@ -179,15 +177,15 @@ export default function ProposalPage({ params }: { params: { id: string } }) {
       </div>
     );
   }
-  
+
   return (
     <div className="bg-[#0a0a0a] text-[#FFFFFF] min-h-screen p-8 flex flex-col items-center font-inter">
       <div className="text-center mb-8">
-        <h2 className="text-3xl md:text-4xl font-bold mb-2 text-[#FFFFFF]">Contextual Deal Writer</h2>
+        <h2 className="text-3xl md:text-4xl font-bold mb-2 text-[#FFFFFF]">Proposal</h2>
         <p className="text-lg text-[#a0a0a0]">Proposal for {proposal.input.executiveName} at {proposal.input.companyName}</p>
         <p className="text-sm text-[#a0a0a0] mt-2">Generated on {new Date(proposal.timestamp).toLocaleString()}</p>
       </div>
-      
+
       <div className="w-full max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row gap-8 w-full">
           {/* Sidebar Navigation - Now using client component */}
@@ -195,25 +193,11 @@ export default function ProposalPage({ params }: { params: { id: string } }) {
             <h4 className="text-lg font-medium mb-4 text-[#FFFFFF]">Contents</h4>
             <HeadingsNavigation headings={headings} />
           </div>
-          
+
           {/* Main Content Area */}
           <div className="flex-grow overflow-y-auto max-h-[70vh] bg-[#111111] p-6 rounded-md">
             {proposalHtml ? (
-              <>
-                {/* Debug info - will remove after fixing */}
-                <p className="text-xs text-gray-400 mb-4">Content length: {proposalHtml.length} characters</p>
-                <div dangerouslySetInnerHTML={{ __html: proposalHtml }} />
-                
-                {/* Fallback raw text display if HTML isn't rendering */}
-                {proposal && proposalHtml.length > 0 && (
-                  <div className="mt-8 pt-8 border-t border-gray-700">
-                    <p className="text-sm text-yellow-400 mb-4">If content is not displaying properly above, here is the raw text:</p>
-                    <pre className="whitespace-pre-wrap text-sm text-white bg-gray-900 p-4 rounded overflow-auto">
-                      {proposal.proposal}
-                    </pre>
-                  </div>
-                )}
-              </>
+              <div dangerouslySetInnerHTML={{ __html: proposalHtml }} />
             ) : (
               <p className="text-[#a0a0a0]">No proposal content available.</p>
             )}
@@ -222,4 +206,4 @@ export default function ProposalPage({ params }: { params: { id: string } }) {
       </div>
     </div>
   );
-} 
+}

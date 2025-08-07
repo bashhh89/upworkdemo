@@ -1,31 +1,23 @@
 import { NextResponse } from 'next/server';
+import { getAllModels } from '@/lib/pollinations-api';
 
 export const runtime = 'edge';
 
 export async function GET() {
   try {
-    // Make direct request to test which model we get
-    const response = await fetch('https://text.pollinations.ai/which%20llm%20and%20company%20are%20u?model=gemini');
+    // Use the getAllModels function from the pollinations-api library
+    const models = await getAllModels();
     
-    if (!response.ok) {
-      throw new Error(`Failed to identify model: ${response.status}`);
-    }
-    
-    const textResponse = await response.text();
-    
-    return NextResponse.json({
-      rawResponse: textResponse,
-      status: 'success',
-      modelTested: 'gemini',
-      endpoint: 'https://text.pollinations.ai/'
-    });
+    return NextResponse.json(models);
   } catch (error) {
-    console.error('Error testing model identity:', error);
+    console.error('Error fetching models:', error);
     
     return NextResponse.json(
       { 
-        error: error instanceof Error ? error.message : 'An unknown error occurred',
-        status: 'error'
+        error: error instanceof Error ? error.message : 'Failed to fetch models',
+        imageModels: [],
+        textModels: [],
+        audioVoices: []
       },
       { status: 500 }
     );

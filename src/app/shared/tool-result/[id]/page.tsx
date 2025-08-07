@@ -152,8 +152,6 @@ export default function SharedToolResultPage() {
         return <Globe className="h-6 w-6 text-blue-500" />;
       case 'Executive Persona':
         return <Users className="h-6 w-6 text-purple-500" />;
-      case 'Contextual Deal Writer':
-        return <Target className="h-6 w-6 text-green-500" />;
       default:
         return <AlertCircle className="h-6 w-6 text-gray-500" />;
     }
@@ -364,81 +362,6 @@ export default function SharedToolResultPage() {
     );
   };
   
-  // Render the Contextual Deal Writer result
-  const renderContextualDealWriter = () => {
-    if (!result || !result.content) return null;
-    
-    const { content } = result;
-    const proposal = content.proposal || {};
-    
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>{proposal.title}</CardTitle>
-            <CardDescription>{proposal.summary}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="p-4 bg-gray-100 rounded-md">
-                <h3 className="text-sm font-medium text-gray-700">Company</h3>
-                <p className="text-md font-bold">{proposal.company}</p>
-              </div>
-              <div className="p-4 bg-gray-100 rounded-md">
-                <h3 className="text-sm font-medium text-gray-700">Industry</h3>
-                <p className="text-md font-bold">{proposal.industry}</p>
-              </div>
-              <div className="p-4 bg-gray-100 rounded-md">
-                <h3 className="text-sm font-medium text-gray-700">Deal Size</h3>
-                <p className="text-md font-bold">{proposal.dealSize}</p>
-              </div>
-            </div>
-            
-            <div className="space-y-6 mt-6">
-              {proposal.sections?.map((section: any, index: number) => (
-                <div key={index}>
-                  <h3 className="text-lg font-semibold mb-2">{section.title}</h3>
-                  <p className="text-gray-800">{section.content}</p>
-                </div>
-              ))}
-              
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Next Steps</h3>
-                <p className="text-blue-600 font-medium">{proposal.callToAction}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Industry Insights</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {content.customizations?.industryInsights?.map((insight: string, index: number) => (
-                <div key={index} className="p-3 bg-gray-50 rounded-md">
-                  {insight}
-                </div>
-              ))}
-            </div>
-            
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Deal Sizing</h3>
-                <p className="text-gray-800">{content.customizations?.companySizing}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Potential ROI</h3>
-                <p className="text-xl font-bold text-green-600">{content.customizations?.potentialROI}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  };
-  
   // Determine which tool result renderer to use
   const renderToolResult = () => {
     if (!result) return null;
@@ -448,8 +371,6 @@ export default function SharedToolResultPage() {
         return renderWebsiteIntelligence();
       case 'Executive Persona':
         return renderExecutivePersona();
-      case 'Contextual Deal Writer':
-        return renderContextualDealWriter();
       default:
         return (
           <Card>
@@ -556,4 +477,4 @@ export default function SharedToolResultPage() {
       {renderToolResult()}
     </div>
   );
-} 
+}

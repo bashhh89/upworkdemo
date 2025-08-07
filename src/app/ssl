@@ -1,0 +1,407 @@
+
+AI Agent Documentation 🤖
+
+
+
+
+
+
+Today at 1:11 AM
+
+Private
+1207 words
+10303 characters
+Unified AI Agent Documentation System
+System Overview
+Purpose: Centralized documentation for all AI agents and workflows
+Maintainer: George (george@socialgarden.com.au)
+Last Updated: August 5, 2025
+Version: 1.0
+Critical Projects (NEVER REMOVE)
+Scorecard Project
+Location: /root/socialgarden-app/
+Main File: ai-scorecard-findings.md
+Key Files:
+test-scorecard-pdf.js
+scorecard-redesign-checklist.md
+docker-compose.scorecard.yml
+Status: Critical - Non-negotiable
+Dependencies: Docker, Node.js, Next.js
+Docker Container: socialgarden_scorecard.1.y4z0s9aovs9repo6dvd6mbx6x (running)
+Weasyprint Project
+Location: /root/weasyprint-service/
+Main Files:
+weasyprint_api_updated.py
+weasyprint.log (67KB)
+flask.log
+Environment: /root/weasyprint_env/
+Backup: /root/weasyprint_backup.tar.gz
+Status: Critical - Non-negotiable
+Dependencies: Python, Flask, PDF generation libraries
+Test Files: test.pdf, test2.pdf
+Current AI Agents
+Disk Cleaning Agent
+Purpose: Disk space management
+Access Method: [To be specified]
+System Prompt: [To be added]
+Common Use Cases:
+Disk space analysis
+Temporary file cleanup
+Log rotation
+Duplicate file detection
+Dependencies: [To be specified]
+CRM Connector
+Purpose: CRM integration tasks
+Access Method: [To be specified]
+System Prompt: [To be added]
+Common Use Cases:
+Data synchronization
+API integration
+Lead management
+Customer data updates
+Dependencies: [To, specified]
+VPS Information
+Server Details
+VPS Name: srv848342.hstgr.cloud
+Location: United Kingdom - Manchester
+** ty**: Ubuntu 24.04.2 LTS (6.8.0-71-generic)
+Status: Running (6 days 7 hours uptime)
+SSH Access: root@168.231.115.219
+Network Configuration
+Primary IP: 168.231.115.219/24
+IPv6: 2a02:4780:f:14e7::1/48
+MAC Address: f0:e8:d4:b2:01:d6
+Docker Networks:
+docker0: 172.17.0.1/16
+docker_gwbridge: 172.18.0.1/16
+Resource Allocation
+CPU: 6% (2 cores)
+Memory: 7.8GB total, 7.2GB used (92%), 533MB available
+Disk: 96GB total, 72GB used (75%), 25GB available
+Bandwidth: 0.01 TB / 8 TB
+Security Configuration
+SSH Keys: 1 configured
+Firewall Rules: 0
+Malware Scanner: Monarx Agent running
+Backup Information
+Current Snapshots/Backups: 2
+Automated Backups: Not enabled (US$ 6.00/mo for upgrade)
+Plan Details
+Current Plan: KVM 2
+Expiration: 2026-05-30
+Auto-renewal: On
+Upgrade Options: Available
+Running Services
+Core System Services
+containerd: Container runtime
+docker: Docker Application Container Engine
+nginx: Web server and reverse proxy
+mysql: MySQL Community Server
+php8.3-fpm: PHP FastCGI Process Manager
+pm2-root: PM2 process manager
+Network Services
+ssh: OpenBSD Secure Shell server
+NetworkManager: Network Manager
+systemd-networkd: Network Configuration
+systemd-resolved: Network Name Resolution
+Application Services
+monarx-agent: Security Scanner
+snapd: Snap Daemon
+fwupd: Firmware update daemon
+unattended-upgrades: Unattended Upgrades
+Docker Containers
+Running Containers
+socialgarden_scorecard.1: easypanel/socialgarden/scorecard:latest (Port 80)
+socialgarden_docconverter.1: easypanel/socialgarden/docconverter:latest (Port 5001)
+traefik.1: traefik:3.3.7 (Locations 80, 443)
+easypanel.1: easypanel/easypanel:latest (Port 3000)
+socialgarden_firefox.1: lscr.io/linuxserver/firefinfox:135.0.1 (Ports 3000-3001)
+socialgarden_ollama-web.1: ghcr.io/open-webui/open-webui:latest (Port 8080)
+ahmad_anything-lm.1: mintplexlabs/anythingllm:latest
+clausen_malte.1: ghcr.io/open-webui/open-webui:latest (Port 8080)
+Standardized Procedures
+Agent Creation Process
+Define the specific purpose and finctionality
+Create the system prompt
+Set up access mechanisms
+Document dependencies
+Test the agent workflow
+Add to this documentation
+Cross-Agent Communication
+[Document how agents can share information]
+[Define data exchange formats]
+[Set up shared knowledge bases]
+Security Protocols
+[Document access control procedures]
+[Define data handling standards]
+[Set up audit trails]
+Shared Resources
+Knowledge Base
+[Link to shared documentation]
+[Common troubleshooting guides]
+[Best practices repository]
+Templates
+[System prompt templates]
+[Response templates]
+[Workflow templates]
+Tools & Utilities
+[Dependencies**: [To, specified]
+VPS Information
+Server Details
+VPS Name: srv848342.hstgr.cloud
+Location: United Kingdom - Manchester
+** ty**: Ubuntu 24.04.2 LTS (6.8.0-71-generic)
+Status: Running (6 days 7 hours uptime)
+SSH Access: root@重复的文本似乎被截断了。让我重新整理这个文档，使其更加清晰和连贯。
+Unified AI Agent Documentation System
+System Overview
+Purpose: Centralized documentation for all AI agents and workflows
+Maintainer: George (george@socialgarden.com.au)
+Last Updated: August 5, 2025
+Version: 1.0
+Critical Projects (NEVER REMOVE)
+Scorecard Project
+Location: /root/socialgarden-app/
+Main File: ai-scorecard-findings.md
+Key Files:
+test-scorecard-pdf.js
+scorecard-redesign-checklist.md
+docker-compose.scorecard.yml
+Status: Critical - Non-negotiable
+Dependencies: Docker, Node.js, Next.js
+Docker Container: socialgarden_scorecard.1.y4z0s9aovs9repo6dvd6mbx6x (running)
+Weasyprint Project
+Location: /root/weasyprint-service/
+Main Files:
+weasyprint_api_updated.py
+weasyprint.log (67KB)
+flask.log
+Environment: /root/weasyprint_env/
+Backup: /root/weasyprint_backup.tar.gz
+Status: Critical - Non-negotiable
+Dependencies: Python, Flask, PDF generation libraries
+Test Files: test.pdf, test2.pdf
+Current AI Agents
+Disk Cleaning Agent
+Purpose: Disk space management
+Access Method: [To be specified]
+System Prompt: [To be added]
+Common Use Cases:
+Disk space analysis
+Temporary file cleanup
+Log rotation
+Duplicate file detection
+Dependencies: [To be specified]
+CRM Connector
+Purpose: CRM integration tasks
+Access Method: [To be specified]
+System Prompt: [To be added]
+Common Use Cases:
+Data synchronization
+API integration
+Lead management
+Customer data updates
+Dependencies: [To be specified]
+VPS Information
+Server Details
+VPS Name: srv848342.hstgr.cloud
+Location: United Kingdom - Manchester
+OS: Ubuntu 24.04.2 LTS (6.8.0-71-generic)
+Status: Running (6 days 7 hours uptime)
+SSH Access: root@168.231.115.219
+Network Configuration
+Primary IP: 168.231.115.219/24
+IPv6: 2a02:4780:f:14e7::1/48
+MAC Address: f0:e8:d4:b2:01:d6
+Docker Networks:
+docker0: 172.17.0.1/16
+docker_gwbridge: 172.18.0.1/16
+Resource Allocation
+CPU: 6% (2 cores)
+Memory: 7.8GB total, 7.2GB used (92%), 533MB available
+Disk: 96GB total, 72GB used (75%), 25GB available
+Bandwidth: 0.01 TB / 8 TB
+Security Configuration
+SSH Keys: 1 configured
+Firewall Rules: 0
+Malware Scanner: Monarx Agent running
+Backup Information
+Current Snapshots/Backups: 2
+Automated Backups: Not enabled (US$ 6.00/mo for upgrade)
+Plan Details
+Current Plan: KVM 2
+Expiration: 2026-05-30
+Auto-renewal: On
+Upgrade Options: Available
+Running Services
+Core System Services
+containerd: Container runtime
+docker: Docker Application Container Engine
+nginx: Web server and reverse proxy
+mysql: MySQL Community Server
+php8.3-fpm: PHP FastCGI Process Manager
+pm2-root: PM2 process manager
+Network Services
+ssh: OpenBSD Secure Shell server
+NetworkManager: Network Manager
+systemd-networkd: Network Configuration
+systemd-resolved: Network Name Resolution
+Application Services
+monarx-agent: Security Scanner
+snapd: Snap Daemon
+fwupd: Firmware update daemon
+unattended-upgrades: Unattended Upgrades
+Docker Containers
+Running Containers
+socialgarden_scorecard.1: easypanel/socialgarden/scorecard:latest (Port 80)
+socialgarden_docconverter.1: easypanel/socialgarden/docconverter:latest (Port 5001)
+traefik.1: traefik:3.3.7 (Ports 80, 443)
+easypanel.1: easypanel/easypanel:latest (Port 3000)
+socialgarden_firefox.1: lscr.io/linuxserver/firefox:135.0.1 (Ports 3000-3001)
+socialgarden_ollama-web.1: ghcr.io/open-webui/open-webui:latest (Port 8080)
+ahmad_anything-llm.1: mintplexlabs/anythingllm:latest
+clausen_malte.1: ghcr.io/open-webui/open-webui:latest (Port 8080)
+Standardized Procedures
+Agent Creation Process
+Define the specific purpose and functionality
+Create the system prompt
+Set up access mechanisms
+Document dependencies
+Test the agent workflow
+Add to this documentation
+Cross-Agent Communication
+[Document how agents can share information]
+[Define data exchange formats]
+[Set up shared knowledge bases]
+Security Protocols
+[Document access control procedures]
+[Define data handling standards]
+[Set up audit trails]
+Shared Resources
+Knowledge Base
+[Link to shared documentation]
+[Common troubleshooting guides]
+[Best practices repository]
+Templates
+[System prompt templates]
+[Response templates]
+[Workflow templates]
+Tools & Utilities
+[List of commonly used tools]
+[Installation guides]
+[Configuration files]
+Agent Coordination Matrix
+Agent
+
+Disk Cleaning
+
+CRM Connector
+
+Future Agent 1
+
+Future Agent 2
+
+Disk Cleaning
+
+-
+
+[Interaction points]
+
+[Interaction points]
+
+[Interaction points]
+
+CRM Connector
+
+[Interaction points]
+
+-
+
+[Interaction points]
+
+[Interaction points]
+
+Future Agent 1
+
+[Interaction points]
+
+[Interaction points]
+
+-
+
+[Interaction points]
+
+Future Agent 2
+
+[Interaction points]
+
+[Interaction points]
+
+[Interaction points]
+
+-
+
+Maintenance & Updates
+Regular Maintenance Schedule
+[Weekly tasks]
+[Monthly tasks]
+[Quarterly reviews]
+Update Procedures
+[Agent update process]
+[Documentation update process]
+[System update notifications]
+Troubleshooting Guide
+Common Issues
+[List frequent problems and solutions]
+[Error code references]
+[Recovery procedures]
+Escalation Procedures
+[When to escalate issues]
+[Contact information]
+[Emergency protocols]
+Quick Reference
+Critical Commands
+# SSH Access
+ssh root@168.231.115.219
+
+# Check Scorecard Project
+ls -la /root/socialgarden-app/
+
+# Check Weasyprint Project
+ls -la /root/weasyprint-service/
+
+# List Running Processes
+ps aux
+
+# Check Docker Containers
+docker ps
+
+# Check System Resources
+df -h
+free -h
+
+Critical File Locations
+Scorecard: /root/socialgarden-app/
+Weasyprint: /root/weasyprint-service/
+Weasyprint Environment: /root/weasyprint_env/
+Service Status
+Next.js: Running (Multiple instances)
+Open WebUI: Running (Multiple instances)
+MySQL: Running (PID 1146)
+Nginx: Running (Multiple PIDs)
+Docker: Running (PID 1162)
+PM2: Running (PID 1265)
+Storage Usage
+Disk: 72GB / 96GB used (75%)
+Memory: 7.2GB / 7.8GB used (92%)
+CPU: 6% usage
+Next Steps
+Enable Automated Backups: Consider upgrading to automated daily backups (US$ 6.00/mo) to protect your data
+Install Malware Scanner: Add security scanning to your VPS (Monarx already running)
+Set Up Firewall Rules: Implement basic security measures
+Create Agent Profiles: Fill in the details for each agent as you develop them
+Establish Communication Protocols: Define how agents will work together
+Note: This document serves as the central reference for all AI agents and system components. Always ensure critical projects (Scorecard and Weasyprint) are backed up before making system changes.
+
+
+

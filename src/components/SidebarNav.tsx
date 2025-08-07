@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { ChevronRight, KanbanSquare, ClipboardList, BrainCircuit, Calculator, BookOpen, Image, Mic, MessageSquare, MessageSquareWarning, Globe, Palette, Home, Layers, User, Users, MessagesSquare, Sparkles, Menu, ChevronLeft, Plus, Trash2, CheckIcon, ArchiveIcon, LayoutDashboard } from 'lucide-react'; // Added Plus, Trash2, and LayoutDashboard
+import { ChevronRight, KanbanSquare, ClipboardList, BrainCircuit, Calculator, BookOpen, Image, Mic, MessageSquare, MessageSquareWarning, Globe, Palette, Home, Layers, User, Users, MessagesSquare, Sparkles, Menu, ChevronLeft, Plus, Trash2, CheckIcon, ArchiveIcon, LayoutDashboard, Target, TrendingUp, BarChart3, PieChart, Building2, Brain } from 'lucide-react'; // Added Plus, Trash2, and LayoutDashboard
 import Link from 'next/link';
 import {
   Accordion,
@@ -36,173 +36,118 @@ interface SidebarNavProps {
   onToggleExpand: () => void;
 }
 
-// Group the navigation items
+// FIRE navigation that actually makes sense
 const navGroups: NavGroup[] = [
+
   {
-    name: 'Navigation',
+    name: 'Start Here',
     items: [
       {
-        name: 'Dashboard',
-        id: 'home', // Changed id from 'dashboard' to 'home'
-        icon: Layers,
-        subItems: [
-          {
-            name: 'Overview',
-            id: 'home',
-            icon: Home
-          },
-          {
-            name: 'Recent Projects',
-            id: 'recent',
-            icon: ClipboardList
-          },
-          {
-            name: 'Saved Items',
-            id: 'saved',
-            icon: BookOpen
-          }
-        ]
-      },
-      {
-        name: 'Chat',
+        name: 'AI Chat Assistant',
         id: 'pollinations-assistant',
         icon: MessageSquare,
-        status: 'fully',
-        subItems: [
-          // Removing "All Threads" sub-item
-        ]
+        status: 'fully'
       },
       {
-        name: 'AI Agent Studio',
-        id: 'agent-studio',
-        icon: Sparkles,
-        status: 'fully',
-        externalLink: '/agent-studio'
-      },
-      {
-        name: 'Resource Library',
-        id: 'resources',
-        icon: BookOpen,
-        status: 'planned'
+        name: 'Brand Foundation',
+        id: 'brand_foundation',
+        icon: Palette,
+        status: 'fully'
       }
     ]
   },
   {
-    name: 'Strategy & Planning',
+    name: 'AI Solutions Showcase',
     items: [
       {
-        name: '90-Day Roadmap',
-        id: 'roadmap',
-        icon: ClipboardList,
-        status: 'planned'
-      },
-      {
-        name: 'AI Efficiency Scorecard',
-        id: 'scorecard',
-        icon: BrainCircuit,
-        status: 'planned'
-      },
-      {
-        name: 'ROI Calculator',
-        id: 'roi',
-        icon: Calculator,
-        status: 'planned'
-      },
-      {
-        name: 'Kanban Task View',
-        id: 'kanban',
-        icon: KanbanSquare,
-        status: 'planned'
-      }
-    ]
-  },
-  {
-    name: 'Audience & Market Insights',
-    items: [
-      {
-        name: 'Website Intelligence',
-        id: 'website_scanner',
-        icon: Globe,
-        status: 'partial'
-      },
-      {
-        name: 'Talk To Website',
-        id: 'talk_to_website',
-        icon: MessagesSquare,
-        status: 'planned'
-      },
-      {
-        name: 'Executive Persona',
-        id: 'executive_persona',
-        icon: User,
-        status: 'planned'
-      },
-      {
-        name: 'Ideal Customer Profile',
-        id: 'ideal_customer_profile',
-        icon: Users,
-        status: 'planned'
-      }
-    ]
-  },
-  {
-    name: 'Sales & Marketing Execution',
-    items: [
-      {
-        name: 'Contextual Deal Writer',
-        id: 'contextual-deal-writer',
-        icon: ClipboardList,
-        status: 'partial'
-      },
-      {
-        name: 'AI Marketing Critique',
-        id: 'critique',
-        icon: MessageSquare,
-        status: 'planned'
-      },
-      {
-        name: 'AI Objection Practice',
-        id: 'objection_handler',
-        icon: MessageSquareWarning,
-        status: 'planned'
-      }
-    ]
-  },
-  {
-    name: 'Creative Generation',
-    items: [
-      {
-        name: 'AI Image Generator',
+        name: 'Smart Image Generator',
         id: 'image_generator',
         icon: Image,
         status: 'fully'
       },
       {
-        name: 'AI Voiceover',
-        id: 'voiceover_generator',
-        icon: Mic,
+        name: 'Website Intelligence',
+        id: 'website_scanner',
+        icon: Globe,
         status: 'fully'
       },
       {
-        name: 'AI Presentations',
-        id: 'presentation-generator',
-        icon: LayoutDashboard,
-        status: 'planned'
+        name: 'Executive Profiler',
+        id: 'executive_persona',
+        icon: User,
+        status: 'fully'
       },
       {
-        name: 'AI Brand Foundation',
-        id: 'brand_foundation',
-        icon: Palette,
-        status: 'planned'
-      },
-      {
-        name: 'AI Idea Generator',
-        id: 'generator',
-        icon: Layers,
-        status: 'planned'
+        name: 'Voice Synthesis',
+        id: 'voiceover_generator',
+        icon: Mic,
+        status: 'fully'
       }
     ]
   },
+  {
+    name: 'Decisions',
+    items: [
+      {
+        name: 'ICP Builder',
+        id: 'icp_builder',
+        icon: Target,
+        status: 'fully'
+      }
+    ]
+  },
+  {
+    name: 'Business Intelligence',
+    items: [
+      {
+        name: 'AI Readiness Score',
+        id: 'scorecard',
+        icon: BrainCircuit,
+        status: 'fully'
+      },
+      {
+        name: 'Customer Profiler',
+        id: 'ideal_customer_profile',
+        icon: Users,
+        status: 'fully'
+      },
+      {
+        name: 'Marketing Critic',
+        id: 'critique',
+        icon: MessageSquareWarning,
+        status: 'fully'
+      },
+      {
+        name: 'Brand Foundation',
+        id: 'brand_foundation',
+        icon: Palette,
+        status: 'fully'
+      }
+    ]
+  },
+  {
+    name: 'Advanced Tools',
+    items: [
+      {
+        name: 'Agent Studio',
+        id: 'agent-studio',
+        icon: Sparkles,
+        status: 'fully'
+      },
+      {
+        name: 'Website Chat',
+        id: 'talk_to_website',
+        icon: MessagesSquare,
+        status: 'fully'
+      },
+      {
+        name: 'Objection Trainer',
+        id: 'objection_handler',
+        icon: MessageSquareWarning,
+        status: 'fully'
+      }
+    ]
+  }
 ];
 
 export default function SidebarNav({ activeSection, onSectionChange, isExpanded, onToggleExpand }: SidebarNavProps) {
@@ -339,10 +284,26 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
 
     const contentClasses = cn("flex items-center flex-1", { "justify-center": !isExpanded });
 
+    const getStatusColor = (status?: string) => {
+      switch (status) {
+        case 'fully': return 'bg-green-500';
+        case 'partial': return 'bg-yellow-500';
+        case 'planned': return 'bg-gray-500';
+        default: return 'bg-green-500';
+      }
+    };
+
     const itemContent = (
        <div className={contentClasses}>
          <Icon className={cn("flex-shrink-0 h-4 w-4", isExpanded ? "mr-3" : "mr-0")} />
-         {isExpanded && <span className="flex-1 text-left truncate text-white">{item.name}</span>}
+         {isExpanded && (
+           <>
+             <span className="flex-1 text-left truncate text-white">{item.name}</span>
+             {item.status && (
+               <div className={cn("h-2 w-2 rounded-full ml-2", getStatusColor(item.status))}></div>
+             )}
+           </>
+         )}
        </div>
     );
 
@@ -408,13 +369,19 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
   const accordionGroups = navGroups.filter(group => group.name !== 'Navigation') || [];
 
   return (
-    <div className={cn("flex flex-col h-full transition-width duration-300 ease-in-out", isExpanded ? "w-64" : "w-20")}>
+    <div className={cn("flex flex-col h-full transition-width duration-300 ease-in-out bg-[#111] border-r border-[#333]", isExpanded ? "w-64" : "w-20")}>
       {/* Logo and Toggle */}
       <div className="flex items-center justify-between px-4 py-6">
         {isExpanded ? (
-          <span className="font-medium text-white">Deliver AI</span>
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="Ahmad Basheer" className="w-8 h-8 rounded-lg" />
+            <div>
+              <div className="font-semibold text-white text-sm">Ahmad Basheer</div>
+              <div className="text-xs text-gray-400">AI Solutions Developer</div>
+            </div>
+          </div>
         ) : (
-          <span className="w-8 h-8 bg-[#2563eb] rounded-full flex items-center justify-center text-white font-bold text-sm">AI</span>
+          <img src="/logo.png" alt="Ahmad Basheer" className="w-8 h-8 rounded-lg" />
         )}
         <button
           onClick={onToggleExpand}
@@ -472,22 +439,17 @@ export default function SidebarNav({ activeSection, onSectionChange, isExpanded,
         </Accordion>
       </div>
 
-      {/* User profile */}
-      <div className={cn("border-t border-[#333333] mt-auto px-3 py-4", isExpanded ? "block" : "flex flex-col items-center")}>
-        <div className={cn("flex items-center", isExpanded ? "space-x-3" : "flex-col space-y-2")}>
-          <div className="relative">
-            <div className="h-10 w-10 bg-[#333] rounded-full flex items-center justify-center text-white">
-              AB
+      {/* Portfolio Footer */}
+      <div className="border-t border-[#333333] mt-auto px-3 py-4">
+        {isExpanded && (
+          <div className="text-center">
+            <p className="text-xs text-gray-500 mb-2">Portfolio Showcase</p>
+            <div className="flex justify-center gap-2">
+              <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+              <span className="text-xs text-green-400">All Systems Operational</span>
             </div>
-            <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-[#0a0a0a]"></span>
           </div>
-          {isExpanded && (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">Ahmad Basheer</p>
-              <p className="text-xs text-gray-500">Pro Plan</p>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );

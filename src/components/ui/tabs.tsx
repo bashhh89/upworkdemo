@@ -1,113 +1,55 @@
-import * as React from "react";
+"use client"
 
-interface TabsProps extends React.HTMLAttributes<HTMLDivElement> {
-  defaultValue?: string;
-  value?: string;
-  onValueChange?: (value: string) => void;
-  children: React.ReactNode;
-  className?: string;
-}
+import * as React from "react"
+import * as TabsPrimitive from "@radix-ui/react-tabs"
 
-interface TabsListProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-  className?: string;
-  currentValue?: string;
-  onValueChange?: (value: string) => void;
-}
+import { cn } from "@/lib/utils"
 
-interface TabsTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  value: string;
-  children: React.ReactNode;
-  className?: string;
-  currentValue?: string;
-  onValueChange?: (value: string) => void;
-}
+const Tabs = TabsPrimitive.Root
 
-interface TabsContentProps extends React.HTMLAttributes<HTMLDivElement> {
-  value: string;
-  children: React.ReactNode;
-  className?: string;
-  currentValue?: string;
-}
+const TabsList = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.List>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.List
+    ref={ref}
+    className={cn(
+      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+TabsList.displayName = TabsPrimitive.List.displayName
 
-export function Tabs({ defaultValue, value, onValueChange, children, className, ...props }: TabsProps) {
-  const [currentValue, setCurrentValue] = React.useState(value || defaultValue || "");
+const TabsTrigger = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Trigger
+    ref={ref}
+    className={cn(
+      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+      className
+    )}
+    {...props}
+  />
+))
+TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
 
-  React.useEffect(() => {
-    if (value !== undefined) {
-      setCurrentValue(value);
-    }
-  }, [value]);
+const TabsContent = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Content
+    ref={ref}
+    className={cn(
+      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      className
+    )}
+    {...props}
+  />
+))
+TabsContent.displayName = TabsPrimitive.Content.displayName
 
-  const handleValueChange = (val: string) => {
-    if (value === undefined) {
-      setCurrentValue(val);
-    }
-    if (onValueChange) {
-      onValueChange(val);
-    }
-  };
-
-  return (
-    <div {...props} className={className}>
-      {React.Children.map(children, (child) => {
-        if (!React.isValidElement(child)) return null;
-        if (child.type === TabsList) {
-          return React.cloneElement(child, { currentValue, onValueChange: handleValueChange });
-        }
-        if (child.type === TabsContent) {
-          return React.cloneElement(child, { currentValue });
-        }
-        return child;
-      })}
-    </div>
-  );
-}
-
-export function TabsList({ children, currentValue, onValueChange, className, ...props }: TabsListProps) {
-  return (
-    <div {...props} className={className} role="tablist">
-      {React.Children.map(children, (child) => {
-        if (!React.isValidElement(child)) return null;
-        if (child.type === TabsTrigger) {
-          return React.cloneElement(child, { currentValue, onValueChange });
-        }
-        return child;
-      })}
-    </div>
-  );
-}
-
-export function TabsTrigger({ value, children, currentValue, onValueChange, className, ...props }: TabsTriggerProps) {
-  const isActive = currentValue === value;
-
-  const handleClick = () => {
-    if (onValueChange) {
-      onValueChange(value);
-    }
-  };
-
-  return (
-    <button
-      {...props}
-      role="tab"
-      aria-selected={isActive}
-      tabIndex={isActive ? 0 : -1}
-      onClick={handleClick}
-      className={`${className} ${isActive ? "bg-[#333333] text-white" : "text-white"} cursor-pointer`}
-    >
-      {children}
-    </button>
-  );
-}
-
-export function TabsContent({ value, children, currentValue, className, ...props }: TabsContentProps) {
-  if (currentValue !== value) {
-    return null;
-  }
-  return (
-    <div {...props} role="tabpanel" className={className}>
-      {children}
-    </div>
-  );
-}
+export { Tabs, TabsList, TabsTrigger, TabsContent }

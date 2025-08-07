@@ -42,7 +42,6 @@ export default function TestToolsPage() {
   const getToolIcon = (toolName: string) => {
     if (toolName.includes('Website')) return <Globe className="h-6 w-6 text-blue-400" />;
     if (toolName.includes('Executive')) return <Users className="h-6 w-6 text-purple-400" />;
-    if (toolName.includes('Deal') || toolName.includes('Contextual')) return <Target className="h-6 w-6 text-green-400" />;
     return null;
   };
   
@@ -129,12 +128,6 @@ export default function TestToolsPage() {
               Create an executive persona for John Smith, CEO at Acme Inc
             </div>
           </div>
-          <div>
-            <h3 className="text-lg font-semibold">Contextual Deal Writer</h3>
-            <div className="bg-black text-white p-3 rounded mt-2 font-mono">
-              Write a deal proposal for TechCorp in the Technology industry
-            </div>
-          </div>
         </div>
       </div>
       <div className="mt-8 text-center">
@@ -144,4 +137,4 @@ export default function TestToolsPage() {
       </div>
     </div>
   );
-} 
+}

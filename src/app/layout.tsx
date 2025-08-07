@@ -12,8 +12,11 @@ try {
 }
 
 export const metadata: Metadata = {
-  title: 'Deliver AI Assistant',
-  description: 'AI-powered marketing and sales assistant',
+  title: 'Ahmad Basheer - AI Solutions Developer',
+  description: 'AI Into Systems That Simply Work - Your AI Translator building agents that bridge the gap between business problems and AI solutions',
+  icons: {
+    icon: '/favicon.ico',
+  },
 }
 
 type RootLayoutProps = {
